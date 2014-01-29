@@ -48,7 +48,7 @@ const uint8_t KEY_FREQ = 250; // частоты пищалки для разных типов событий
 const uint8_t END_FREQ = 80;
 const uint8_t SAVE_FREQ = 150;
 
-const uint8_t SHOW_TIME = 4; // время свечения одного сегмента индикатора
+const uint8_t SHOW_TIME = 10; // время свечения одного сегмента индикатора
 
 enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4, NOT_USED = -5};
 enum NO_ACTION { NO_TIMER = 100, NO_COUNT = 100, NO_DIGIT = 10, STOP = -1};
@@ -117,12 +117,16 @@ void led_set(Led *led)
 
 void led_show(Led led)
 {
+  cli();
   PORTB = pgm_read_byte( &led_digits[led.first_digit]);
   set_bit(PORTD,PIND6);
+  sei();
   _delay_ms(SHOW_TIME);
+  cli();
   reset_bit(PORTD,PIND6);
   PORTB = pgm_read_byte( &led_digits[led.second_digit]);
   set_bit(PORTB,PINB7);
+  sei();
   _delay_ms(SHOW_TIME);
 }
 
