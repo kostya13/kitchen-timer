@@ -88,9 +88,10 @@ const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16, 63
 const int8_t key_beep[] = { 2, STOP};
 const int8_t end_beep[] = { 5, -20,  5, -20, 5, STOP};
 const int8_t save_beep[] = { 10, -10,  5, STOP};
-
-const uint8_t timer_preset_default[] PROGMEM  = { 99, 10, 20, 30, 40, 50, 60, 70, 80, 90 , 97 , 12 ,13 };
-uint8_t EEMEM timer_preset[10];
+//значения таймера по умолчанию
+const uint8_t timer_preset_default[10] PROGMEM  = { 99, 10, 20, 30, 40, 50, 60, 70, 80, 90 };
+//значения EEPROM по умолчанию. Загружаются в контроллер отдельной командой
+uint8_t EEMEM timer_preset[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 volatile uint8_t counter; // значение счетчика
 volatile uint8_t current_timer; // номер выбранного счетчика
@@ -344,7 +345,7 @@ int main(void)
         if(key.pressed == SAVE_KEY )
         {
           start_beep(save_beep,SAVE_FREQ);
-          eeprom_write_byte(&timer_preset[key.pressed], counter);          
+          eeprom_write_byte(&timer_preset[current_timer], counter);          
         }
         else if(key.pressed == STAR_KEY && counter > 1)
         {
