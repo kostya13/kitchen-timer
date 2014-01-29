@@ -324,7 +324,8 @@ int main(void)
       {
         if(key.pressed == SAVE_KEY )
         {
-          start_beep(save_beep,SAVE_FREQ); 
+          start_beep(save_beep,SAVE_FREQ);
+          eeprom_write_byte(&timer_preset[key.pressed], counter);          
         }
         else if(key.pressed == STAR_KEY && counter > 1)
         {
