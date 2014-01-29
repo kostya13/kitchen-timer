@@ -27,6 +27,7 @@ const uint8_t END_FREQ = 80;
 const uint8_t SAVE_FREQ = 150;
 
 const uint8_t KEY_TIME = 5;
+const uint8_t SHIFT_TIME = 100;
 const uint8_t SAVE_TIME = 200;
 
 const uint8_t SHOW_TIME = 4;
@@ -147,7 +148,6 @@ inline static void scan_keyboard(void)
   static uint8_t pressed_time = 0;
   static int8_t current_row = START_ROW ;
 
-  int8_t shift = -1;
   uint8_t column0;
   uint8_t column1;
   uint8_t column2;  
@@ -160,18 +160,21 @@ inline static void scan_keyboard(void)
   column0 = (~PIND) & 0x01;
   column1 = (~PINA) & 0x01;
   column2 = (~PINA) & 0x02;
-    
-  if( column0)
-    shift = 0;
-  else if ( column1 )
-    shift = 1;
-  else if( column2 )
-    shift = 2;
-  if ( shift >= 0)
-    current_key = pgm_read_byte(&keyboard_decoder[current_row-1][shift]);
 
   if( current_row == END_ROW && ( column0 && column2))
     current_key = SAVE_KEY;
+  else
+  {
+    int8_t shift = -1;
+    if( column0)
+      shift = 0;
+    else if ( column1 )
+      shift = 1;
+    else if( column2 )
+      shift = 2;
+    if ( shift >= 0)
+      current_key = pgm_read_byte(&keyboard_decoder[current_row-1][shift]);
+  }
   
   if (current_key != NO_KEY_PRESSED && pressed_time <  UINT8_MAX)
     pressed_time++;
@@ -188,11 +191,21 @@ inline static void scan_keyboard(void)
       key.used = NO_KEY_PRESSED;
       key.pressed = NO_KEY_PRESSED;
     }
-
-    if (pressed_time >=  KEY_TIME  && key.used != current_key)
+    else if ( current_key != key.used)
     {
-      key.used = NO_KEY_PRESSED;
-      key.pressed = current_key;
+      uint8_t accept = 0;
+      if (current_key == SAVE_KEY && pressed_time >=  SAVE_TIME)
+        accept = 1;
+      else if ((current_key == STAR_KEY || current_key == HASH_KEY) && pressed_time >=  SHIFT_TIME)
+        accept = 1;
+      else if (pressed_time >=  KEY_TIME )
+        accept = 1;
+
+      if (accept)
+      {
+        key.used = NO_KEY_PRESSED;
+        key.pressed = current_key;
+      }
     }
 
     current_row = START_ROW;
