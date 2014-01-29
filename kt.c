@@ -210,7 +210,6 @@ inline static void scan_keyboard(void)
         key.pressed = current_key;
       }
     }
-
     current_row = START_ROW;
   }
 }
@@ -256,28 +255,26 @@ int main(void)
 
 
   // CTC mode
-  TCCR0A =  1 << WGM01 ;
+  TCCR0A =  _BV(WGM01);
   //prescaler at 8
-  TCCR0B = 1 << CS01;
+  TCCR0B = _BV(CS01);
   TCNT0 = 0x00;
   // max value
   OCR0A = 130;
   OCR0B = 0;
 
   TCCR1A= 0x00;
-  TCCR1B =_BV(WGM12) |  _BV(CS10); //CTC mode, prescaler 1
+  TCCR1B =_BV(WGM12) | _BV(CS10); //CTC mode, prescaler 1
   TCNT1H=0x00;
   TCNT1L=0x00;
   ICR1H=0x00;
   ICR1L=0x00;
-  OCR1AH=0x27; //1000
+  OCR1AH=0x27; //частота таймера 100√ц
   OCR1AL=0x10;
   OCR1BH=0x00;
   OCR1BL=0xFF;
 
   TIMSK = _BV(OCIE1B);
-  //
-
 
   // Universal Serial Interface initialization
   USICR=0x00;
@@ -285,7 +282,6 @@ int main(void)
   // Analog Comparator initialization
   ACSR=0x80;
 
-  
   beep.status = BEEP_OFF;
 
   key.pressed = NO_KEY_PRESSED;
@@ -340,7 +336,6 @@ int main(void)
       }
       key.used = key.pressed ;
     }
- 
     if(counter != last_counter)
     {
       led_set(&led_display);
@@ -350,7 +345,3 @@ int main(void)
   }
   return 0;
 }
-
- 
-
-
