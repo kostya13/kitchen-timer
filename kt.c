@@ -101,7 +101,7 @@ volatile uint16_t frac = 0; // отсчитывает доли до 1 минуты
 volatile CurrentBeep beep;
 volatile Key key;
 
-void led_set(Led *led)
+inline void led_set(Led *led)
 {
   if (counter == NO_COUNT)
   {
@@ -115,18 +115,14 @@ void led_set(Led *led)
   }
 }
 
-void led_show(Led led)
+inline static void led_show(Led led)
 {
-  cli();
   PORTB = pgm_read_byte( &led_digits[led.first_digit]);
   set_bit(PORTD,PIND6);
-  sei();
   _delay_ms(SHOW_TIME);
-  cli();
   reset_bit(PORTD,PIND6);
   PORTB = pgm_read_byte( &led_digits[led.second_digit]);
   set_bit(PORTB,PINB7);
-  sei();
   _delay_ms(SHOW_TIME);
 }
 
@@ -243,7 +239,7 @@ inline static void scan_keyboard(void)
 
 }
 
-int8_t set_counter(void)
+inline int8_t set_counter(void)
 {
   frac = 0;
   uint8_t value;
@@ -313,7 +309,7 @@ int main(void)
   beep.status = BEEP_OFF;
 
   key.pressed = NO_KEY_PRESSED;
-  key.used = NO_KEY_PRESSED;
+  key.used = NOT_USED;
 
   counter =  NO_COUNT;
   current_timer = NO_TIMER;
@@ -361,7 +357,7 @@ int main(void)
           start_beep(key_beep,KEY_FREQ);
           counter++;
         }
-      }
+        }
       key.used = key.pressed ;
     }
     if(counter != last_counter)
