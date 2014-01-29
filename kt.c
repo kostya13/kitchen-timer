@@ -2,6 +2,10 @@
 #define AVR_ATtiny2313
 #define F_CPU 1000000UL    // 1 MHz
 #define TIMER_FREQ  100UL  // 100Hz
+#define TIMER_PRESCALER 1 // Установить это значение делителя таймера в TCCR1B (Bits 2:0)
+
+#define MAX_TIMER  (F_CPU / TIMER_PRESCALER) / TIMER_FREQ
+
 
 #include <avr/cpufunc.h>
 #include <avr/io.h>
@@ -10,6 +14,11 @@
 #include <avr/pgmspace.h>
 #include <inttypes.h>
 #include <util/delay.h>
+
+#if MAX_TIMER > UINT16_MAX
+// значение MAX_TIMER слишком большое, необходимо увеличить TIMER_PRESCALER.
+# error "MAX_TIMER too large, need increase TIMER_PRESCALER."
+#endif
 
 #define low(x)   ((x) & 0xFF)
 #define high(x)   (((x)>>8) & 0xFF)
@@ -21,7 +30,7 @@
 #define STOP_COUNT()  reset_bit(TIMSK,OCIE1A);
 #define START_COUNT() set_bit(TIMSK,OCIE1A);
 
-const uint16_t MAX_TIMER = F_CPU / TIMER_FREQ;
+
 
 const uint8_t MAX_COUNT_VALUE = 99;
 const uint16_t MAX_FRAC = 200;
