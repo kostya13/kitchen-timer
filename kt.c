@@ -1,6 +1,7 @@
 // -*- coding: windows-1251 -*-
 #define AVR_ATtiny2313
-#define F_CPU 1000000UL   // 1 MHz
+#define F_CPU 1000000UL    // 1 MHz
+#define TIMER_FREQ  100UL  // 100Hz
 
 #include <avr/cpufunc.h>
 #include <avr/io.h>
@@ -10,6 +11,9 @@
 #include <inttypes.h>
 #include <util/delay.h>
 
+#define low(x)   ((x) & 0xFF)
+#define high(x)   (((x)>>8) & 0xFF)
+
 #define set_bit(port,bit)   port |= _BV(bit)
 #define reset_bit(port,bit) port &= ~(_BV(bit))
 #define invert_bit(port,bit) port = _BV(bit);
@@ -17,8 +21,12 @@
 #define STOP_COUNT()  reset_bit(TIMSK,OCIE1A);
 #define START_COUNT() set_bit(TIMSK,OCIE1A);
 
+const uint16_t MAX_TIMER = F_CPU / TIMER_FREQ;
+
 const uint8_t MAX_COUNT_VALUE = 99;
-const uint16_t MAX_FRAC = 6000;
+const uint16_t MAX_FRAC = 200;
+
+
 
 const uint8_t START_ROW = 1;
 const uint8_t END_ROW = 4;
@@ -70,7 +78,7 @@ uint8_t EEMEM timer_preset[10];
 volatile uint8_t counter = NO_COUNT;
 volatile uint8_t current_timer = NO_TIMER;
 
-volatile uint8_t frac = 0;
+volatile uint16_t frac = 0;
 
 volatile CurrentBeep beep;
 volatile Key key;
@@ -241,16 +249,15 @@ ISR (TIMER1_COMPB_vect)
   check_beep();
 }
 
-
 int main(void)
 {
-  PORTA=0xFF;
-  DDRA=0x00;
+  PORTA = 0xFF;
+  DDRA = 0x00;
 
-  PORTB=0x00 ;
-  DDRB=0xFF;
+  PORTB = 0x00 ;
+  DDRB = 0xFF;
 
-  PORTD= _BV(PIND0) | _BV(PIND1) |_BV(PIND2) | _BV(PIND3)  | _BV(PIND4);
+  PORTD = _BV(PIND0) | _BV(PIND1) |_BV(PIND2) | _BV(PIND3)  | _BV(PIND4);
   DDRD = _BV(PIND1) | _BV(PIND2) | _BV(PIND3) |_BV(PIND4) | _BV(PIND5)  | _BV(PIND6);
 
 
@@ -263,16 +270,16 @@ int main(void)
   OCR0A = 130;
   OCR0B = 0;
 
-  TCCR1A= 0x00;
+  TCCR1A = 0x00;
   TCCR1B =_BV(WGM12) | _BV(CS10); //CTC mode, prescaler 1
-  TCNT1H=0x00;
-  TCNT1L=0x00;
-  ICR1H=0x00;
-  ICR1L=0x00;
-  OCR1AH=0x27; //частота таймера 100Гц
-  OCR1AL=0x10;
-  OCR1BH=0x00;
-  OCR1BL=0xFF;
+  TCNT1H = 0x00;
+  TCNT1L = 0x00;
+  ICR1H = 0x00;
+  ICR1L = 0x00;
+  OCR1AH = high(MAX_TIMER);
+  OCR1AL = low(MAX_TIMER);
+  OCR1BH = 0x00;
+  OCR1BL = 0xFF;
 
   TIMSK = _BV(OCIE1B);
 
