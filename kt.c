@@ -13,7 +13,7 @@
 #include <inttypes.h>
 #include <util/delay.h>
 
-#define TIMER_FREQ  100UL // Частота таймера (Герц)
+#define TIMER_FREQ  100UL // Требуемая частота таймера (Герц)
 #define TIMER_PRESCALER 1 // Установить значение делителя таймера в TCCR1B (Bits 2:0)
 
 #define MAX_TIMER  (F_CPU / TIMER_PRESCALER) / TIMER_FREQ // максимальное значение таймера в режиме CTC
@@ -255,6 +255,7 @@ ISR (TIMER1_COMPA_vect)
   {
     frac = 0;
     counter--;
+    return;
   }
   frac++;
   return;
