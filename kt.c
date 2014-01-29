@@ -1,11 +1,9 @@
 // -*- coding: windows-1251 -*-
-#define AVR_ATtiny2313
-#define F_CPU 1000000UL    // 1 MHz
-#define TIMER_FREQ  100UL  // 100Hz
-#define TIMER_PRESCALER 1 // Установить это значение делителя таймера в TCCR1B (Bits 2:0)
 
-#define MAX_TIMER  (F_CPU / TIMER_PRESCALER) / TIMER_FREQ
-
+// Макросы:
+// F_CPU - частота процессора
+// MCU - тип микроконтроллера
+// определены в Makefile
 
 #include <avr/cpufunc.h>
 #include <avr/io.h>
@@ -15,13 +13,17 @@
 #include <inttypes.h>
 #include <util/delay.h>
 
+#define TIMER_FREQ  100UL // Частота таймера (Герц)
+#define TIMER_PRESCALER 1 // Установить значение делителя таймера в TCCR1B (Bits 2:0)
+
+#define MAX_TIMER  (F_CPU / TIMER_PRESCALER) / TIMER_FREQ // максимальное значение таймера в режиме CTC
 #if MAX_TIMER > UINT16_MAX
 // значение MAX_TIMER слишком большое, необходимо увеличить TIMER_PRESCALER.
 # error "MAX_TIMER too large, need increase TIMER_PRESCALER."
 #endif
 
-#define low(x)   ((x) & 0xFF)
-#define high(x)   (((x)>>8) & 0xFF)
+#define low(x)  ((x) & 0xFF)
+#define high(x) (((x)>>8) & 0xFF)
 
 #define set_bit(port,bit)   port |= _BV(bit)
 #define reset_bit(port,bit) port &= ~(_BV(bit))
@@ -29,26 +31,24 @@
 
 #define STOP_COUNT()  reset_bit(TIMSK,OCIE1A);
 #define START_COUNT() set_bit(TIMSK,OCIE1A);
-
-
+#define STOP_BEEP() reset_bit(TCCR0A,COM0B0);
+#define START_BEEP() set_bit(TCCR0A,COM0B0);
 
 const uint8_t MAX_COUNT_VALUE = 99;
-const uint16_t MAX_FRAC = 200;
+const uint16_t MAX_FRAC = 60 * TIMER_FREQ; // количество отчсетов таймера за 1 минуту
 
-
-
-const uint8_t START_ROW = 1;
+const uint8_t START_ROW = 1; // номера битов порта для сканирования строк клавиатуры
 const uint8_t END_ROW = 4;
 
-const uint8_t KEY_FREQ = 250;
-const uint8_t END_FREQ = 80;
-const uint8_t SAVE_FREQ = 150;
-
-const uint8_t KEY_TIME = 5;
+const uint8_t KEY_TIME = 5; // время задержки при нажатии на клавиши
 const uint8_t SHIFT_TIME = 100;
 const uint8_t SAVE_TIME = 200;
 
-const uint8_t SHOW_TIME = 4;
+const uint8_t KEY_FREQ = 250; // частоты пищалки для разных типов событий
+const uint8_t END_FREQ = 80;
+const uint8_t SAVE_FREQ = 150;
+
+const uint8_t SHOW_TIME = 4; // время свечения одного сегмента индикатора
 
 enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4, NOT_USED = -5};
 enum NO_ACTION { NO_TIMER = 100, NO_COUNT = 100, NO_DIGIT = 10, STOP = -1};
@@ -74,24 +74,31 @@ typedef struct key_struct
   int8_t used;
 } Key;
 
-
 const int8_t keyboard_decoder[4][3] PROGMEM = {{ 1, 2, 3}, { 4, 5, 6}, {7, 8, 9}, {STAR_KEY, 0, HASH_KEY}};
 const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16, 63};
-const int8_t key_beep[] =  { 2, STOP};
-const int8_t end_beep[] =  { 5, -20,  5, -20, 5, STOP};
+
+//Последовательность звуков для разны событий
+//Формат:
+//Положительные числа задают длительность звучения, отрицательные - длительность паузы,
+//Специальное значение STOP означает конец звучания.
+//Время зввучания определяется как n/TIMER_FREQ.
+//Т.е если TIMER_FREQ=100, то при n=100 будет пищать 1 секунду
+//максимальное значение числа: от -127 до +127.
+//Если неободима большая длительность можно поставить несколько значений звучания подряд.
+const int8_t key_beep[] = { 2, STOP};
+const int8_t end_beep[] = { 5, -20,  5, -20, 5, STOP};
 const int8_t save_beep[] = { 10, -10,  5, STOP};
 
 const uint8_t timer_preset_default[] PROGMEM  = { 99, 10, 20, 30, 40, 50, 60, 70, 80, 90 , 97 , 12 ,13 };
 uint8_t EEMEM timer_preset[10];
 
-volatile uint8_t counter = NO_COUNT;
-volatile uint8_t current_timer = NO_TIMER;
+volatile uint8_t counter; // значение счетчика
+volatile uint8_t current_timer; // номер выбранного счетчика
 
-volatile uint16_t frac = 0;
+volatile uint16_t frac = 0; // отсчитывает доли до 1 минуты
 
 volatile CurrentBeep beep;
 volatile Key key;
-
 
 void led_set(Led *led)
 {
@@ -118,7 +125,6 @@ void led_show(Led led)
   _delay_ms(SHOW_TIME);
 }
 
-
 inline void start_beep(const int8_t* set_beep, uint8_t freq)
 {
   beep.position = 1;
@@ -135,31 +141,36 @@ inline void check_beep(void)
     return;
 
   if(beep.timer > 0)
-    beep.timer--;
-  else
   {
-    int8_t current = beep.melody[beep.position];
-    int8_t pause_flag = current & 0x80;
-    int8_t delay;
-    if (current == STOP)
-    {
-      beep.status = BEEP_OFF;
-      reset_bit(TCCR0A,COM0B0);
-      return;
-    }
-    if ( pause_flag)
-    {
-      reset_bit(TCCR0A,COM0B0);
-      delay = ~current +1;
-    }
-    else // beep
-    {
-      set_bit(TCCR0A,COM0B0);
-      delay = current;
-    }
-    beep.timer = delay;
-    beep.position++;
+    beep.timer--;
+    return;
   }
+  
+  int8_t current = beep.melody[beep.position];
+  int8_t pause_flag = current & 0x80;
+  int8_t delay;
+
+  if (current == STOP)
+  {
+    beep.status = BEEP_OFF;
+    STOP_BEEP();
+    return;
+  }
+
+  if (pause_flag)
+  {
+    STOP_BEEP();
+    delay = -1*current;
+  }
+  else 
+  {
+    START_BEEP();
+    delay = current;
+  }
+  
+  beep.timer = delay;
+  beep.position++;
+
 }
 
 inline static void scan_keyboard(void)
@@ -168,18 +179,14 @@ inline static void scan_keyboard(void)
   static uint8_t pressed_time = 0;
   static int8_t current_row = START_ROW ;
 
-  uint8_t column0;
-  uint8_t column1;
-  uint8_t column2;  
-
   reset_bit(PORTD,current_row);
 
   if (current_row ==START_ROW)
     current_key = NO_KEY_PRESSED;
 
-  column0 = (~PIND) & 0x01;
-  column1 = (~PINA) & 0x01;
-  column2 = (~PINA) & 0x02;
+  uint8_t column0 = (~PIND) & 0x01;
+  uint8_t column1 = (~PINA) & 0x01;
+  uint8_t column2 = (~PINA) & 0x02;
 
   if( current_row == END_ROW && ( column0 && column2))
     current_key = SAVE_KEY;
@@ -200,35 +207,35 @@ inline static void scan_keyboard(void)
     pressed_time++;
 
   set_bit(PORTD,current_row);
-
   current_row++;
 
-  if (current_row == END_ROW + 1)
-  {
-    if( current_key == NO_KEY_PRESSED)
-    {
-      pressed_time = 0;
-      key.used = NOT_USED;
-      key.pressed = NO_KEY_PRESSED;
-    }
-    else if ( current_key != key.used)
-    {
-      uint8_t accept = 0;
-      if (current_key == SAVE_KEY && pressed_time >=  SAVE_TIME)
-        accept = 1;
-      else if ((current_key == STAR_KEY || current_key == HASH_KEY) && pressed_time >=  SHIFT_TIME)
-        accept = 1;
-      else if (pressed_time >=  KEY_TIME )
-        accept = 1;
+  if (current_row < END_ROW + 1)
+    return;
 
-      if (accept)
-      {
-        key.used = NOT_USED;
-        key.pressed = current_key;
-      }
-    }
-    current_row = START_ROW;
+  if( current_key == NO_KEY_PRESSED)
+  {
+    pressed_time = 0;
+    key.used = NOT_USED;
+    key.pressed = NO_KEY_PRESSED;
   }
+  else if ( current_key != key.used)
+  {
+    uint8_t accept = 0;
+    if (current_key == SAVE_KEY && pressed_time >=  SAVE_TIME)
+      accept = 1;
+    else if ((current_key == STAR_KEY || current_key == HASH_KEY) && pressed_time >=  SHIFT_TIME)
+      accept = 1;
+    else if (pressed_time >=  KEY_TIME )
+      accept = 1;
+
+    if (accept)
+    {
+      key.used = NOT_USED;
+      key.pressed = current_key;
+    }
+  }
+  current_row = START_ROW;
+
 }
 
 int8_t set_counter(void)
