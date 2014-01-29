@@ -35,7 +35,7 @@
 #define START_BEEP() set_bit(TCCR0A,COM0B0);
 
 const uint8_t MAX_COUNT_VALUE = 99;
-const uint16_t MAX_FRAC = 60 * TIMER_FREQ; // количество отчсетов таймера за 1 минуту
+const uint16_t MAX_FRAC = 60 * (TIMER_FREQ -1); // количество отчсетов таймера за 1 минуту
 
 const uint8_t START_ROW = 1; // номера битов порта для сканирования строк клавиатуры
 const uint8_t END_ROW = 4;
@@ -251,7 +251,7 @@ inline int8_t set_counter(void)
   
 ISR (TIMER1_COMPA_vect)
 {
-  if ( frac == MAX_FRAC)
+  if ( frac == MAX_FRAC )
   {
     frac = 0;
     counter--;
