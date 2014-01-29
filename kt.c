@@ -18,7 +18,8 @@
 #define START_COUNT() set_bit(TIMSK,OCIE1A);
 
 const uint8_t MAX_COUNT_VALUE = 99;
-const uint8_t MAX_FRAC = 100;
+const uint16_t MAX_FRAC = 6000;
+
 const uint8_t START_ROW = 1;
 const uint8_t END_ROW = 4;
 
@@ -32,8 +33,8 @@ const uint8_t SAVE_TIME = 200;
 
 const uint8_t SHOW_TIME = 4;
 
-enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4};
-enum NO_ACTION { NO_COUNT = 100, NO_DIGIT = 10, STOP = -1};
+enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4, NOT_USED = -5};
+enum NO_ACTION { NO_TIMER = 100, NO_COUNT = 100, NO_DIGIT = 10, STOP = -1};
 enum BEEP_STATUS { BEEP_ON, BEEP_OFF};
 
 typedef struct current_beep
@@ -67,6 +68,8 @@ const uint8_t timer_preset_default[] PROGMEM  = { 99, 10, 20, 30, 40, 50, 60, 70
 uint8_t EEMEM timer_preset[10];
 
 volatile uint8_t counter = NO_COUNT;
+volatile uint8_t current_timer = NO_TIMER;
+
 volatile uint8_t frac = 0;
 
 volatile CurrentBeep beep;
@@ -188,7 +191,7 @@ inline static void scan_keyboard(void)
     if( current_key == NO_KEY_PRESSED)
     {
       pressed_time = 0;
-      key.used = NO_KEY_PRESSED;
+      key.used = NOT_USED;
       key.pressed = NO_KEY_PRESSED;
     }
     else if ( current_key != key.used)
@@ -203,7 +206,7 @@ inline static void scan_keyboard(void)
 
       if (accept)
       {
-        key.used = NO_KEY_PRESSED;
+        key.used = NOT_USED;
         key.pressed = current_key;
       }
     }
@@ -282,12 +285,15 @@ int main(void)
   // Analog Comparator initialization
   ACSR=0x80;
 
+  
   beep.status = BEEP_OFF;
 
   key.pressed = NO_KEY_PRESSED;
   key.used = NO_KEY_PRESSED;
 
   counter =  NO_COUNT;
+  current_timer = NO_TIMER;
+  
   int8_t last_counter = counter;
   Led led_display;
   led_set(&led_display);
@@ -299,27 +305,38 @@ int main(void)
     {
       STOP_COUNT();
       counter = NO_COUNT;
+      current_timer = NO_TIMER;
       led_set(&led_display);
       last_counter = counter;
       start_beep(end_beep, END_FREQ);
     }
 
-    if(key.pressed  > NO_KEY_PRESSED && key.used == NO_KEY_PRESSED)
+    if(key.pressed  > NO_KEY_PRESSED && key.used == NOT_USED)
     {
-      start_beep(key_beep,KEY_FREQ);
-      if(key.pressed >= 0)
+      if(key.pressed >= 0) //нажата цифрова€ клавиша
       {
+        start_beep(key_beep,KEY_FREQ);
         counter =  set_counter();
+        current_timer = key.pressed;
         START_COUNT();
       }
-      else if(key.pressed == SAVE_KEY)
+      else if (current_timer != NO_TIMER) //дл€ управл€ющих клавиш
       {
-        start_beep(save_beep,SAVE_FREQ); 
+        if(key.pressed == SAVE_KEY )
+        {
+          start_beep(save_beep,SAVE_FREQ); 
+        }
+        else if(key.pressed == STAR_KEY && counter > 1)
+        {
+          start_beep(key_beep,KEY_FREQ);
+          counter--;
+        }
+        else if(key.pressed == HASH_KEY && counter < MAX_COUNT_VALUE)
+        {
+          start_beep(key_beep,KEY_FREQ);
+          counter++;
+        }
       }
-      else if(key.pressed == HASH_KEY && counter > 1)
-        counter--;
-      else if(key.pressed == STAR_KEY && counter < MAX_COUNT_VALUE)
-        counter++;
       key.used = key.pressed ;
     }
  
