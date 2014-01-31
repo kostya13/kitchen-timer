@@ -77,7 +77,7 @@ typedef struct key_struct
 const int8_t keyboard_decoder[4][3] PROGMEM = {{ 1, 2, 3}, { 4, 5, 6}, {7, 8, 9}, {STAR_KEY, 0, HASH_KEY}};
 const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16, 63};
 
-//ѕоследовательность звуков дл€ разны событий
+//ѕоследовательность звуков дл€ разных событий
 //‘ормат:
 //ѕоложительные числа задают длительность звучени€, отрицательные - длительность паузы,
 //—пециальное значение STOP означает конец звучани€.
@@ -88,6 +88,7 @@ const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16, 63
 const int8_t key_beep[] = { 2, STOP};
 const int8_t end_beep[] = { 5, -20,  5, -20, 5, STOP};
 const int8_t save_beep[] = { 10, -10,  5, STOP};
+
 //значени€ таймера по умолчанию
 const uint8_t timer_preset_default[10] PROGMEM  = { 99, 10, 20, 30, 40, 50, 60, 70, 80, 90 };
 //значени€ EEPROM по умолчанию. «агружаютс€ в контроллер отдельной командой
@@ -180,9 +181,9 @@ inline static void scan_keyboard(void)
   static uint8_t pressed_time = 0;
   static int8_t current_row = START_ROW ;
 
-  reset_bit(PORTD,current_row);
+  reset_bit(PORTD, current_row);
 
-  if (current_row ==START_ROW)
+  if (current_row == START_ROW)
     current_key = NO_KEY_PRESSED;
 
   uint8_t column0 = (~PIND) & 0x01;
@@ -207,7 +208,7 @@ inline static void scan_keyboard(void)
   if (current_key != NO_KEY_PRESSED && pressed_time <  UINT8_MAX)
     pressed_time++;
 
-  set_bit(PORTD,current_row);
+  set_bit(PORTD, current_row);
   current_row++;
 
   if (current_row < END_ROW + 1)
@@ -336,7 +337,7 @@ int main(void)
     {
       if(key.pressed >= 0) //нажата цифрова€ клавиша
       {
-        start_beep(key_beep,KEY_FREQ);
+        start_beep(key_beep, KEY_FREQ);
         counter =  set_counter();
         current_timer = key.pressed;
         START_COUNT();
@@ -350,16 +351,16 @@ int main(void)
         }
         else if(key.pressed == STAR_KEY && counter > 1)
         {
-          start_beep(key_beep,KEY_FREQ);
+          start_beep(key_beep, KEY_FREQ);
           counter--;
         }
         else if(key.pressed == HASH_KEY && counter < MAX_COUNT_VALUE)
         {
-          start_beep(key_beep,KEY_FREQ);
+          start_beep(key_beep, KEY_FREQ);
           counter++;
         }
         }
-      key.used = key.pressed ;
+      key.used = key.pressed;
     }
     if(counter != last_counter)
     {
