@@ -48,7 +48,7 @@ const uint8_t KEY_FREQ = 250; // частоты пищалки для разных типов событий
 const uint8_t END_FREQ = 80;
 const uint8_t SAVE_FREQ = 150;
 
-const uint8_t SHOW_TIME = 10; // время свечения одного сегмента индикатора
+const uint8_t SHOW_TIME = 3; // время свечения одного сегмента индикатора
 
 enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4, NOT_USED = -5};
 enum NO_ACTION { NO_TIMER = 100, NO_COUNT = 100, NO_DIGIT = 10, STOP = -1};
