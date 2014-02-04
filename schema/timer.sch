@@ -1,0 +1,97 @@
+EESchema Schematic File Version 2  date Вт. 04 февр. 2014 23:46:46
+LIBS:power
+LIBS:mixture
+LIBS:digital_IC
+LIBS:analog_IC
+LIBS:conn
+LIBS:gost
+LIBS:device
+LIBS:elements
+LIBS:timer-cache
+EELAYER 25  0
+EELAYER END
+$Descr A4 11700 8267
+encoding utf-8
+Sheet 1 1
+Title ""
+Date "4 feb 2014"
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L RES R?
+U 1 1 52F14118
+P 6150 3250
+F 0 "R?" H 6400 3375 60  0000 C CNN
+F 1 "RES" H 6650 3375 60  0000 C CNN
+	1    6150 3250
+	1    0    0    -1  
+$EndComp
+$Comp
+L SPEAKER SP?
+U 1 1 52F14041
+P 5350 5050
+F 0 "SP?" H 5250 5300 70  0000 C CNN
+F 1 "SPEAKER" H 5250 4800 70  0000 C CNN
+	1    5350 5050
+	1    0    0    -1  
+$EndComp
+$Comp
+L VT_NPN_BCE VT?
+U 1 1 52F13E6A
+P 4300 4300
+F 0 "VT?" H 4350 4500 60  0000 R CNN
+F 1 "VT_NPN_BCE" H 4350 4100 60  0000 R CNN
+	1    4300 4300
+	1    0    0    -1  
+$EndComp
+$Comp
+L POWER_GND #01
+U 1 1 52F13E15
+P 4650 5300
+F 0 "#01" V 4600 5250 60  0001 C CNN
+F 1 "POWER_GND" V 4700 5250 60  0001 C CNN
+	1    4650 5300
+	1    0    0    -1  
+$EndComp
+$Comp
+L BAT GB?
+U 1 1 52F13DFB
+P 3500 3800
+F 0 "GB?" H 3525 3675 60  0000 L CNN
+F 1 "BAT" H 3525 3475 60  0000 L CNN
+	1    3500 3800
+	1    0    0    -1  
+$EndComp
+$Comp
+L SA_1-2_CL SA?
+U 1 1 52F13A0C
+P 3850 2600
+F 0 "SA?" H 3850 2800 120 0000 C CNN
+F 1 "SA_1-2_CL" H 3850 2500 60  0000 C CNN
+	1    3850 2600
+	1    0    0    -1  
+$EndComp
+$Comp
+L HG_LED_7SEG_2_1 HG?
+U 1 1 52F1391F
+P 7750 3050
+F 0 "HG?" H 8150 4000 60  0000 C CNN
+F 1 "HG_LED_7SEG_2_1" H 8150 2300 60  0000 C CNN
+	1    7750 3050
+	1    0    0    -1  
+$EndComp
+$Comp
+L ATTINY2313 DD?
+U 1 1 52F138FE
+P 5050 2250
+F 0 "DD?" H 5550 2400 60  0000 C CNN
+F 1 "ATTINY2313" H 5550 300 60  0000 C CNN
+	1    5050 2250
+	1    0    0    -1  
+$EndComp
+$EndSCHEMATC
