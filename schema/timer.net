@@ -1,7 +1,7 @@
 (export (version D)
   (design
-    (source D:\avr\kitchen-timer\schema\timer.sch)
-    (date "07.02.2014 15:46:37")
+    (source D:/avr/kitchen-timer/schema/timer.sch)
+    (date "07.02.2014 15:59:15")
     (tool "eeschema (2013-07-07 BZR 4022)-stable"))
   (components
     (comp (ref SP1)
@@ -148,21 +148,27 @@
         (fp SM0805))
       (fields
         (field (name Reference) R)
-        (field (name Value) R))
+        (field (name Value) R)
+        (field (name Footprint) ~)
+        (field (name Datasheet) ~))
       (pins
         (pin (num 1) (name ~) (type passive))
         (pin (num 2) (name ~) (type passive))))
     (libpart (lib device) (part SPEAKER)
       (fields
         (field (name Reference) SP)
-        (field (name Value) SPEAKER))
+        (field (name Value) SPEAKER)
+        (field (name Footprint) ~)
+        (field (name Datasheet) ~))
       (pins
         (pin (num 1) (name 1) (type input))
         (pin (num 2) (name 2) (type input))))
     (libpart (lib timer-cache) (part KEYBOARD)
       (fields
         (field (name Reference) Kbd)
-        (field (name Value) KEYBOARD))
+        (field (name Value) KEYBOARD)
+        (field (name Footprint) ~)
+        (field (name Datasheet) ~))
       (pins
         (pin (num ~) (name 1) (type input)))))
   (libraries
