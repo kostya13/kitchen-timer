@@ -27,18 +27,18 @@
 
 #define set_bit(port,bit)   port |= _BV(bit)
 #define reset_bit(port,bit) port &= ~(_BV(bit))
-#define invert_bit(port,bit) port = _BV(bit);
+//#define invert_bit(port,bit) port = _BV(bit)
 
-#define STOP_COUNT()  reset_bit(TIMSK,OCIE1A);
-#define START_COUNT() set_bit(TIMSK,OCIE1A);
-#define STOP_BEEP() reset_bit(TCCR0A,COM0B0);
-#define START_BEEP() set_bit(TCCR0A,COM0B0);
+#define STOP_COUNT()  reset_bit(TIMSK,OCIE1A)
+#define START_COUNT() set_bit(TIMSK,OCIE1A)
+#define STOP_BEEP() reset_bit(TCCR0A,COM0B0)
+#define START_BEEP() set_bit(TCCR0A,COM0B0)
 
-const uint8_t MAX_COUNT_VALUE = 99;
 const uint16_t MAX_FRAC = 60 * (TIMER_FREQ -1); // количество отчсетов таймера за 1 минуту
 
 const uint8_t START_ROW = 1; // номера битов порта для сканирования строк клавиатуры
 const uint8_t END_ROW = 4;
+const uint8_t MAX_COUNT_VALUE = 99;
 
 const uint8_t KEY_TIME = 5; // время задержки при нажатии на клавиши
 const uint8_t SHIFT_TIME = 100;
@@ -48,7 +48,7 @@ const uint8_t KEY_FREQ = 250; // частоты пищалки для разных типов событий
 const uint8_t END_FREQ = 80;
 const uint8_t SAVE_FREQ = 150;
 
-const uint8_t SHOW_TIME = 3; // время свечения одного сегмента индикатора
+const uint8_t SHOW_TIME = 1; // время свечения одного сегмента индикатора
 
 enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4, NOT_USED = -5};
 enum NO_ACTION { NO_TIMER = 100, NO_COUNT = 100, NO_DIGIT = 10, STOP = -1};
@@ -111,20 +111,21 @@ inline void led_set(Led *led)
   }
   else
   {
-    led->first_digit =  counter / 10;
-    led->second_digit = counter % 10;
+    led->first_digit =  pgm_read_byte( &led_digits[counter / 10]);
+    led->second_digit = pgm_read_byte( &led_digits[counter % 10]);
   }
 }
 
 inline static void led_show(Led led)
 {
-  PORTB = pgm_read_byte( &led_digits[led.first_digit]);
+  PORTB = led.second_digit;
+  set_bit(PORTB,PINB7);
+  _delay_ms(SHOW_TIME);
+
+  PORTB =  led.first_digit;
   set_bit(PORTD,PIND6);
   _delay_ms(SHOW_TIME);
   reset_bit(PORTD,PIND6);
-  PORTB = pgm_read_byte( &led_digits[led.second_digit]);
-  set_bit(PORTB,PINB7);
-  _delay_ms(SHOW_TIME);
 }
 
 inline void start_beep(const int8_t* set_beep, uint8_t freq)
@@ -227,7 +228,7 @@ inline static void scan_keyboard(void)
       accept = 1;
     else if ((current_key == STAR_KEY || current_key == HASH_KEY) && pressed_time >=  SHIFT_TIME)
       accept = 1;
-    else if (pressed_time >=  KEY_TIME )
+      else if (pressed_time >=  KEY_TIME )
       accept = 1;
 
     if (accept)
@@ -264,7 +265,7 @@ ISR (TIMER1_COMPA_vect)
 
 ISR (TIMER1_COMPB_vect)
 {
-  scan_keyboard();
+//  scan_keyboard();
   check_beep();
 }
 
@@ -319,11 +320,16 @@ int main(void)
   int8_t last_counter = counter;
   Led led_display;
   led_set(&led_display);
+  counter =  20;
+  current_timer = 2;
+  led_set(&led_display);
+//  START_COUNT();
+
   // Global enable interrupts
-  sei();
+  // sei();
   while (1)
   {
-    if(counter == 0)
+/*    if(counter == 0)
     {
       STOP_COUNT();
       counter = NO_COUNT;
@@ -362,11 +368,14 @@ int main(void)
         }
       key.used = key.pressed;
     }
+*/
+    /*
     if(counter != last_counter)
     {
-      led_set(&led_display);
+       led_set(&led_display);
       last_counter = counter;
     }
+    */
     led_show(led_display);
   }
   return 0;
