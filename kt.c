@@ -51,7 +51,7 @@ const uint8_t SAVE_FREQ = 150;
 const uint8_t SHOW_TIME = 1; // время свечения одного сегмента индикатора
 
 enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4, NOT_USED = -5};
-enum NO_ACTION { NO_TIMER = 100, NO_COUNT = 100, NO_DIGIT = 10, STOP = -1};
+enum NO_ACTION { NO_TIMER = 100, NO_COUNT = 100, NO_DIGIT = 63, STOP = -1};
 enum BEEP_STATUS { BEEP_ON, BEEP_OFF};
 
 typedef struct current_beep
@@ -75,7 +75,7 @@ typedef struct key_struct
 } Key;
 
 const int8_t keyboard_decoder[4][3] PROGMEM = {{ 1, 2, 3}, { 4, 5, 6}, {7, 8, 9}, {STAR_KEY, 0, HASH_KEY}};
-const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16, 63};
+const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16};
 
 //Последовательность звуков для разных событий
 //Формат:
@@ -265,7 +265,7 @@ ISR (TIMER1_COMPA_vect)
 
 ISR (TIMER1_COMPB_vect)
 {
-//  scan_keyboard();
+  scan_keyboard();
   check_beep();
 }
 
@@ -320,16 +320,16 @@ int main(void)
   int8_t last_counter = counter;
   Led led_display;
   led_set(&led_display);
-  counter =  20;
-  current_timer = 2;
-  led_set(&led_display);
+//  counter =  20;
+//  current_timer = 2;
+//  led_set(&led_display);
 //  START_COUNT();
 
   // Global enable interrupts
-  // sei();
+  sei();
   while (1)
   {
-/*    if(counter == 0)
+    if(counter == 0)
     {
       STOP_COUNT();
       counter = NO_COUNT;
@@ -368,14 +368,14 @@ int main(void)
         }
       key.used = key.pressed;
     }
-*/
-    /*
+
+    
     if(counter != last_counter)
     {
        led_set(&led_display);
       last_counter = counter;
     }
-    */
+    
     led_show(led_display);
   }
   return 0;
