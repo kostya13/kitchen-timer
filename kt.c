@@ -27,10 +27,10 @@
 
 #define set_bit(port,bit)   port |= _BV(bit)
 #define reset_bit(port,bit) port &= ~(_BV(bit))
-//#define invert_bit(port,bit) port = _BV(bit)
 
 #define STOP_COUNT()  reset_bit(TIMSK,OCIE1A)
 #define START_COUNT() set_bit(TIMSK,OCIE1A)
+
 #define STOP_BEEP() reset_bit(TCCR0A,COM0B0)
 #define START_BEEP() set_bit(TCCR0A,COM0B0)
 
@@ -41,8 +41,8 @@ const uint8_t END_ROW = 4;
 const uint8_t MAX_COUNT_VALUE = 99;
 
 const uint8_t KEY_TIME = 5; // время задержки при нажатии на клавиши
-const uint8_t SHIFT_TIME = 100;
-const uint8_t SAVE_TIME = 200;
+const uint8_t SHIFT_TIME = 5;
+const uint8_t SAVE_TIME = 100;
 
 const uint8_t KEY_FREQ = 250; // частоты пищалки для разных типов событий
 const uint8_t END_FREQ = 80;
@@ -206,12 +206,12 @@ inline static void scan_keyboard(void)
       current_key = pgm_read_byte(&keyboard_decoder[current_row-1][shift]);
   }
   
-  if (current_key != NO_KEY_PRESSED && pressed_time <  UINT8_MAX)
-    pressed_time++;
-
   set_bit(PORTD, current_row);
   current_row++;
 
+  if (current_key != NO_KEY_PRESSED && pressed_time <  UINT8_MAX)
+    pressed_time++;
+  
   if (current_row < END_ROW + 1)
     return;
 
@@ -228,7 +228,7 @@ inline static void scan_keyboard(void)
       accept = 1;
     else if ((current_key == STAR_KEY || current_key == HASH_KEY) && pressed_time >=  SHIFT_TIME)
       accept = 1;
-      else if (pressed_time >=  KEY_TIME )
+    else if ((current_key >= 0 && current_key <= 9) && pressed_time >=  KEY_TIME )
       accept = 1;
 
     if (accept)
@@ -299,7 +299,7 @@ int main(void)
   OCR1AH = high(MAX_TIMER);
   OCR1AL = low(MAX_TIMER);
   OCR1BH = 0x00;
-  OCR1BL = 0xFF;
+  OCR1BL = 0x00;
 
   TIMSK = _BV(OCIE1B);
 
