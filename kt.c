@@ -28,9 +28,6 @@
 #define set_bit(port,bit)   port |= _BV(bit)
 #define reset_bit(port,bit) port &= ~(_BV(bit))
 
-//#define STOP_COUNT()  reset_bit(TIMSK,OCIE1A)
-//#define START_COUNT() set_bit(TIMSK,OCIE1A)
-
 #define STOP_BEEP() reset_bit(TCCR0A,COM0B0)
 #define START_BEEP() set_bit(TCCR0A,COM0B0)
 
@@ -99,9 +96,9 @@ uint8_t EEMEM timer_preset[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF
 
 volatile uint8_t counter; // значение счетчика
 volatile uint8_t current_timer; // номер выбранного счетчика
+
 volatile uint8_t count_finished; // флаг окончани€ счета
 volatile uint8_t need_rebeep; // флаг повторного включени€ звка
-volatile uint8_t start_count; //
 
 volatile uint16_t main_frac_counter = 0; // отсчитывает доли до 1 минуты
 volatile uint16_t rebeep_frac_counter = 0; //
@@ -260,7 +257,7 @@ inline int8_t set_counter(void)
   
 ISR (TIMER1_COMPA_vect)
 {
-  if(start_count == YES)
+  if( counter != NO_COUNT)
   {
     if (main_frac_counter == MAIN_TIMER_MAX)
     {
@@ -346,7 +343,6 @@ int main(void)
   int8_t last_counter = counter;
   Led led_display;
   led_set(&led_display);
-  start_count = NO;
   set_bit(TIMSK,OCIE1A);
   
   sei();
@@ -354,7 +350,6 @@ int main(void)
   {
     if(counter == 0)
     {
-      start_count = NO;      
       counter = NO_COUNT;
       current_timer = NO_TIMER;
       led_set(&led_display);
@@ -379,7 +374,6 @@ int main(void)
         start_beep(key_beep, KEY_FREQ);
         counter =  set_counter();
         current_timer = key.pressed;
-        start_count = YES;
         count_finished = NO;
       }
       else if (current_timer != NO_TIMER) //дл€ управл€ющих клавиш
