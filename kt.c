@@ -50,9 +50,9 @@ const uint8_t SAVE_FREQ = 150;
 const uint8_t SHOW_TIME = 1; // врем€ свечени€ одного сегмента индикатора
 
 enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4, NOT_USED = -5};
-enum NO_ACTION { NO_TIMER = 100, NO_COUNT = 100, NO_DIGIT = 63, STOP = -1};
+enum NO_ACTION { NO_INDEX = 100, NO_COUNT = 100, NO_DIGIT = 63, STOP = -1};
 enum BEEP_STATUS { BEEP_ON, BEEP_OFF};
-enum YES_NO { NO = 0, YES =1};
+enum YES_NO { NO = 0, YES = 1};
 
 typedef struct current_beep
 {
@@ -74,6 +74,15 @@ typedef struct key_struct
   int8_t used;
 } Key;
 
+typedef struct counter_struct
+{
+  uint8_t current; // значение счетчика
+  uint8_t last;
+  uint8_t index; // номер выбранного счетчика
+  uint8_t finished; // флаг окончани€ счета
+  uint16_t frac_counter; // отсчитывает доли до 1 минуты  
+} Counter;
+
 const int8_t keyboard_decoder[4][3] PROGMEM = {{ 1, 2, 3}, { 4, 5, 6}, {7, 8, 9}, {STAR_KEY, 0, HASH_KEY}};
 const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16};
 
@@ -94,29 +103,27 @@ const uint8_t timer_preset_default[10] PROGMEM  = { 99, 3, 20, 30, 40, 50, 60, 7
 //значени€ EEPROM по умолчанию. «агружаютс€ в контроллер отдельной командой
 uint8_t EEMEM timer_preset[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-volatile uint8_t counter; // значение счетчика
-volatile uint8_t current_timer; // номер выбранного счетчика
-
-volatile uint8_t count_finished; // флаг окончани€ счета
 volatile uint8_t need_rebeep; // флаг повторного включени€ звка
-
-volatile uint16_t main_frac_counter = 0; // отсчитывает доли до 1 минуты
 volatile uint16_t rebeep_frac_counter = 0; //
 
 volatile CurrentBeep beep;
+
 volatile Key key;
+
+volatile Counter counter;
+
 
 inline void led_set(Led *led)
 {
-  if (counter == NO_COUNT)
+  if (counter.current == NO_COUNT)
   {
     led->first_digit = NO_DIGIT;
     led->second_digit  = NO_DIGIT;
   }
   else
   {
-    led->first_digit =  pgm_read_byte( &led_digits[counter / 10]);
-    led->second_digit = pgm_read_byte( &led_digits[counter % 10]);
+    led->first_digit =  pgm_read_byte( &led_digits[counter.current / 10]);
+    led->second_digit = pgm_read_byte( &led_digits[counter.current % 10]);
   }
 }
 
@@ -244,28 +251,18 @@ inline static void scan_keyboard(void)
   current_row = START_ROW;
 
 }
-
-inline int8_t set_counter(void)
-{
-  main_frac_counter= 0;
-  uint8_t value;
-  value = eeprom_read_byte(&timer_preset[key.pressed]);
-  if ((value > MAX_COUNT_VALUE) || (value == 0))
-    value = pgm_read_byte(&timer_preset_default[key.pressed]);
-  return value;
-}
   
 ISR (TIMER1_COMPA_vect)
 {
-  if( counter != NO_COUNT)
+  if(counter.current != NO_COUNT)
   {
-    if (main_frac_counter == MAIN_TIMER_MAX)
+    if (counter.frac_counter == MAIN_TIMER_MAX)
     {
-      main_frac_counter = 0;
-      counter--;
+      counter.frac_counter = 0;
+      counter.current--;
     }
     else
-      main_frac_counter++;
+      counter.frac_counter++;
   }
   if (rebeep_frac_counter == REBEEP_TIMER_MAX)
   {
@@ -322,7 +319,7 @@ int main(void)
   OCR1BH = 0x00;
   OCR1BL = 0x00;
 
-  TIMSK = _BV(OCIE1B);
+  TIMSK = _BV(OCIE1A) | _BV(OCIE1B);
 
   // выключаем Universal Serial Interface
   USICR=0x00;
@@ -336,31 +333,31 @@ int main(void)
   key.pressed = NO_KEY_PRESSED;
   key.used = NOT_USED;
 
-  counter =  NO_COUNT;
-  current_timer = NO_TIMER;
-  count_finished = NO;
-  
-  int8_t last_counter = counter;
+  counter.current =  NO_COUNT;
+  counter.index = NO_INDEX;
+  counter.finished = NO;
+  counter.last = counter.current;
+
   Led led_display;
   led_set(&led_display);
-  set_bit(TIMSK,OCIE1A);
   
   sei();
   while (1)
   {
-    if(counter == 0)
+    if(counter.current == 0)
     {
-      counter = NO_COUNT;
-      current_timer = NO_TIMER;
+      counter.current = NO_COUNT;
+      counter.index = NO_INDEX;
       led_set(&led_display);
-      last_counter = counter;
+      counter.last = counter.current;
       start_beep(end_beep, END_FREQ);
+      counter.finished = YES;
+      
       rebeep_frac_counter = 0;
       need_rebeep = NO;
-      count_finished = YES;
     }
 
-    if(counter == NO_COUNT && count_finished == YES && need_rebeep == YES)
+    if(counter.current == NO_COUNT && counter.finished == YES && need_rebeep == YES)
     {
       start_beep(end_beep, END_FREQ);
       rebeep_frac_counter = 0;      
@@ -372,35 +369,40 @@ int main(void)
       if(key.pressed >= 0) //нажата цифрова€ клавиша
       {
         start_beep(key_beep, KEY_FREQ);
-        counter =  set_counter();
-        current_timer = key.pressed;
-        count_finished = NO;
+
+        counter.current = eeprom_read_byte(&timer_preset[key.pressed]);
+        if ((counter.current > MAX_COUNT_VALUE) || (counter.current == 0))
+          counter.current = pgm_read_byte(&timer_preset_default[key.pressed]);
+        
+        counter.frac_counter = 0;        
+        counter.index = key.pressed;        
+        counter.finished = NO;
       }
-      else if (current_timer != NO_TIMER) //дл€ управл€ющих клавиш
+      else if (counter.index != NO_INDEX) //дл€ управл€ющих клавиш
       {
         if(key.pressed == SAVE_KEY )
         {
           start_beep(save_beep,SAVE_FREQ);
-          eeprom_write_byte(&timer_preset[current_timer], counter);          
+          eeprom_write_byte(&timer_preset[counter.index], counter.current);          
         }
-        else if(key.pressed == STAR_KEY && counter > 1)
+        else if(key.pressed == STAR_KEY && counter.current > 1)
         {
           start_beep(key_beep, KEY_FREQ);
-          counter--;
+          counter.current--;
         }
-        else if(key.pressed == HASH_KEY && counter < MAX_COUNT_VALUE)
+        else if(key.pressed == HASH_KEY && counter.current < MAX_COUNT_VALUE)
         {
           start_beep(key_beep, KEY_FREQ);
-          counter++;
+          counter.current++;
         }
         }
       key.used = key.pressed;
     }
     
-    if(counter != last_counter)
+    if(counter.current != counter.last)
     {
       led_set(&led_display);
-      last_counter = counter;
+      counter.last = counter.current;
     }
     
     led_show(led_display);
