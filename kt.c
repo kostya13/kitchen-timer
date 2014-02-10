@@ -78,10 +78,10 @@ typedef struct key_struct
 typedef struct counter_struct
 {
   uint8_t current; // значение счетчика
-  uint8_t last;
+  uint8_t last; // предыдущее значение
   uint8_t index; // номер выбранного счетчика
   uint8_t finished; // флаг окончания счета
-  uint16_t fraction; // отсчитывает доли до 1 минуты  
+  uint16_t fraction; // отсчитывает доли для current
 } Counter;
 
 const int8_t keyboard_decoder[4][3] PROGMEM = {{ 1, 2, 3}, { 4, 5, 6}, {7, 8, 9}, {STAR_KEY, 0, HASH_KEY}};
