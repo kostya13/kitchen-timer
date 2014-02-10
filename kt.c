@@ -34,9 +34,6 @@
 const uint16_t MAIN_TIMER_MAX = 60 * (TIMER_FREQ -1); // количество отчсетов таймера за 1 минуту
 const uint16_t REBEEP_TIMER_MAX = 10 * TIMER_FREQ; // пауза между повторными сигналами
 
-const uint8_t START_ROW = 1; // номера битов порта для сканирования строк клавиатуры
-const uint8_t END_ROW = 4;
-
 const uint8_t MAX_COUNT_VALUE = 99;
 
 const uint8_t KEY_TIME = 1;    // время задержки при нажатии на клавиши (n/TIMER_FREQ)*4 (сек.)
@@ -48,8 +45,8 @@ const uint8_t SAVE_FREQ = 150;
 
 const uint8_t SHOW_TIME = 1; // время свечения одного сегмента индикатора
 
-enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4, NOT_USED = -5};
-enum NO_ACTION { NO_INDEX = 100, NO_COUNT = 100, NO_DIGIT = 63, STOP = -1};
+enum KEYS {HASH_KEY = -1, STAR_KEY = -2};
+enum NO_ACTION {NO_KEY_PRESSED = -4, NOT_USED = 5, STOP = -1};
 enum BEEP_STATUS { BEEP_ON, BEEP_OFF};
 enum YES_NO { NO = 0, YES = 1};
 enum STATES { STATE_COUNTING, STATE_WAIT};
@@ -183,6 +180,9 @@ inline void check_beep(void)
 
 inline static void scan_keyboard(void)
 {
+  static const uint8_t START_ROW = 1; // номера битов порта для сканирования строк клавиатуры
+  static const uint8_t END_ROW = 4;
+
   static int8_t current_key = NO_KEY_PRESSED ;
   static int8_t last_key = NO_KEY_PRESSED ;
   static uint8_t pressed_time = 0;
