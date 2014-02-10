@@ -35,6 +35,7 @@
 #define START_BEEP() set_bit(TCCR0A,COM0B0)
 
 const uint16_t MAX_FRAC = 60 * (TIMER_FREQ -1); // количество отчсетов таймера за 1 минуту
+const uint16_t REBEEP_FRAC = 30 * TIMER_FREQ; // пауза между повторными сигналами
 
 const uint8_t START_ROW = 1; // номера битов порта дл€ сканировани€ строк клавиатуры
 const uint8_t END_ROW = 4;
@@ -54,6 +55,7 @@ const uint8_t SHOW_TIME = 1; // врем€ свечени€ одного сегмента индикатора
 enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4, NOT_USED = -5};
 enum NO_ACTION { NO_TIMER = 100, NO_COUNT = 100, NO_DIGIT = 63, STOP = -1};
 enum BEEP_STATUS { BEEP_ON, BEEP_OFF};
+enum YES_NO { NO = 0, YES =1};
 
 typedef struct current_beep
 {
@@ -97,8 +99,11 @@ uint8_t EEMEM timer_preset[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF
 
 volatile uint8_t counter; // значение счетчика
 volatile uint8_t current_timer; // номер выбранного счетчика
+volatile uint8_t count_finished; // флаг окончани€ счета
+volatile uint8_t need_rebeep; // флаг повторного включени€ звка
 
 volatile uint16_t frac = 0; // отсчитывает доли до 1 минуты
+volatile uint16_t rebeep_frac = 0; //
 
 volatile CurrentBeep beep;
 volatile Key key;
@@ -258,9 +263,18 @@ ISR (TIMER1_COMPA_vect)
   {
     frac = 0;
     counter--;
-    return;
   }
-  frac++;
+  else
+    frac++;
+
+  if ( rebeep_frac == REBEEP_FRAC )
+  {
+    need_rebeep = YES;
+    rebeep_frac = 0;
+  }
+  else
+    need_rebeep++;
+  
   return;
 }
 
@@ -272,15 +286,21 @@ ISR (TIMER1_COMPB_vect)
 
 int main(void)
 {
-  PORTA = 0xFF;
+  //все ножки на вход
   DDRA = 0x00;
+  //вклчаем подт€гивающие резисторы
+  PORTA = 0xFF;
 
-  PORTB = 0x00 ;
+  // все ножки на выход
   DDRB = 0xFF;
+  // везде лог.0
+  PORTB = 0x00 ;
 
-  PORTD = _BV(PIND0) | _BV(PIND1) |_BV(PIND2) | _BV(PIND3)  | _BV(PIND4);
+
+  // указаные дорожки на выход.
   DDRD = _BV(PIND1) | _BV(PIND2) | _BV(PIND3) |_BV(PIND4) | _BV(PIND5)  | _BV(PIND6);
-
+  // на 0 ножку уст. резистор, ножки 1-4 перевести в лог.1.
+  PORTD = _BV(PIND0) | _BV(PIND1) |_BV(PIND2) | _BV(PIND3)  | _BV(PIND4);
 
   // CTC mode
   TCCR0A =  _BV(WGM01);
@@ -304,12 +324,13 @@ int main(void)
 
   TIMSK = _BV(OCIE1B);
 
-  // Universal Serial Interface initialization
+  // выключаем Universal Serial Interface
   USICR=0x00;
 
-  // Analog Comparator initialization
+  // выключаем Analog Comparator 
   ACSR=0x80;
 
+  
   beep.status = BEEP_OFF;
 
   key.pressed = NO_KEY_PRESSED;
@@ -317,16 +338,12 @@ int main(void)
 
   counter =  NO_COUNT;
   current_timer = NO_TIMER;
+  count_finished = NO;
   
   int8_t last_counter = counter;
   Led led_display;
   led_set(&led_display);
-//  counter =  20;
-//  current_timer = 2;
-//  led_set(&led_display);
-//  START_COUNT();
 
-  // Global enable interrupts
   sei();
   while (1)
   {
@@ -338,6 +355,16 @@ int main(void)
       led_set(&led_display);
       last_counter = counter;
       start_beep(end_beep, END_FREQ);
+      rebeep_frac = 0;
+      need_rebeep = NO;
+      count_finished = YES;
+    }
+
+    if(counter == NO_COUNT && count_finished == YES && need_rebeep == YES)
+    {
+      start_beep(end_beep, END_FREQ);
+      rebeep_frac = 0;      
+      need_rebeep = NO;
     }
 
     if(key.pressed  > NO_KEY_PRESSED && key.used == NOT_USED)
@@ -369,11 +396,10 @@ int main(void)
         }
       key.used = key.pressed;
     }
-
     
     if(counter != last_counter)
     {
-       led_set(&led_display);
+      led_set(&led_display);
       last_counter = counter;
     }
     
