@@ -80,7 +80,7 @@ typedef struct counter_struct
   uint8_t last;
   uint8_t index; // номер выбранного счетчика
   uint8_t finished; // флаг окончания счета
-  uint16_t frac_counter; // отсчитывает доли до 1 минуты  
+  uint16_t fraction; // отсчитывает доли до 1 минуты  
 } Counter;
 
 const int8_t keyboard_decoder[4][3] PROGMEM = {{ 1, 2, 3}, { 4, 5, 6}, {7, 8, 9}, {STAR_KEY, 0, HASH_KEY}};
@@ -104,7 +104,7 @@ const uint8_t timer_preset_default[10] PROGMEM  = { 99, 3, 20, 30, 40, 50, 60, 7
 uint8_t EEMEM timer_preset[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 volatile uint8_t need_rebeep; // флаг повторного включения звка
-volatile uint16_t rebeep_frac_counter = 0; //
+volatile uint16_t rebeep_fraction = 0; //
 
 volatile CurrentBeep beep;
 
@@ -256,21 +256,25 @@ ISR (TIMER1_COMPA_vect)
 {
   if(counter.current != NO_COUNT)
   {
-    if (counter.frac_counter == MAIN_TIMER_MAX)
+    if (counter.fraction == MAIN_TIMER_MAX)
     {
-      counter.frac_counter = 0;
+      counter.fraction = 0;
       counter.current--;
     }
     else
-      counter.frac_counter++;
+      counter.fraction++;
   }
-  if (rebeep_frac_counter == REBEEP_TIMER_MAX)
+  
+  if(counter.finished == YES)
   {
-    need_rebeep = YES;
-    rebeep_frac_counter = 0;
+    if (rebeep_fraction == REBEEP_TIMER_MAX)
+    {
+      need_rebeep = YES;
+      rebeep_fraction = 0;
+    }
+    else
+      rebeep_fraction++;
   }
-  else
-    rebeep_frac_counter++;
   
   return;
 }
@@ -353,14 +357,14 @@ int main(void)
       start_beep(end_beep, END_FREQ);
       counter.finished = YES;
       
-      rebeep_frac_counter = 0;
+      rebeep_fraction = 0;
       need_rebeep = NO;
     }
 
     if(counter.current == NO_COUNT && counter.finished == YES && need_rebeep == YES)
     {
       start_beep(end_beep, END_FREQ);
-      rebeep_frac_counter = 0;      
+      rebeep_fraction = 0;      
       need_rebeep = NO;
     }
 
@@ -374,7 +378,7 @@ int main(void)
         if ((counter.current > MAX_COUNT_VALUE) || (counter.current == 0))
           counter.current = pgm_read_byte(&timer_preset_default[key.pressed]);
         
-        counter.frac_counter = 0;        
+        counter.fraction = 0;        
         counter.index = key.pressed;        
         counter.finished = NO;
       }
