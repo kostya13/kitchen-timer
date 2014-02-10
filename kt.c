@@ -28,8 +28,8 @@
 #define set_bit(port,bit)   port |= _BV(bit)
 #define reset_bit(port,bit) port &= ~(_BV(bit))
 
-#define STOP_COUNT()  reset_bit(TIMSK,OCIE1A)
-#define START_COUNT() set_bit(TIMSK,OCIE1A)
+//#define STOP_COUNT()  reset_bit(TIMSK,OCIE1A)
+//#define START_COUNT() set_bit(TIMSK,OCIE1A)
 
 #define STOP_BEEP() reset_bit(TCCR0A,COM0B0)
 #define START_BEEP() set_bit(TCCR0A,COM0B0)
@@ -93,7 +93,7 @@ const int8_t end_beep[] = { 5, -20,  5, -20, 5, STOP};
 const int8_t save_beep[] = { 10, -10,  5, STOP};
 
 //значения таймера по умолчанию
-const uint8_t timer_preset_default[10] PROGMEM  = { 99, 10, 20, 30, 40, 50, 60, 70, 80, 90 };
+const uint8_t timer_preset_default[10] PROGMEM  = { 99, 3, 20, 30, 40, 50, 60, 70, 80, 90 };
 //значения EEPROM по умолчанию. Загружаются в контроллер отдельной командой
 uint8_t EEMEM timer_preset[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -101,6 +101,7 @@ volatile uint8_t counter; // значение счетчика
 volatile uint8_t current_timer; // номер выбранного счетчика
 volatile uint8_t count_finished; // флаг окончания счета
 volatile uint8_t need_rebeep; // флаг повторного включения звка
+volatile uint8_t start_count; //
 
 volatile uint16_t main_frac_counter = 0; // отсчитывает доли до 1 минуты
 volatile uint16_t rebeep_frac_counter = 0; //
@@ -259,14 +260,16 @@ inline int8_t set_counter(void)
   
 ISR (TIMER1_COMPA_vect)
 {
-  if (main_frac_counter == MAIN_TIMER_MAX)
+  if(start_count == YES)
   {
-    main_frac_counter = 0;
-    counter--;
+    if (main_frac_counter == MAIN_TIMER_MAX)
+    {
+      main_frac_counter = 0;
+      counter--;
+    }
+    else
+      main_frac_counter++;
   }
-  else
-    main_frac_counter++;
-
   if (rebeep_frac_counter == REBEEP_TIMER_MAX)
   {
     need_rebeep = YES;
@@ -343,13 +346,15 @@ int main(void)
   int8_t last_counter = counter;
   Led led_display;
   led_set(&led_display);
-
+  start_count = NO;
+  set_bit(TIMSK,OCIE1A);
+  
   sei();
   while (1)
   {
     if(counter == 0)
     {
-      STOP_COUNT();
+      start_count = NO;      
       counter = NO_COUNT;
       current_timer = NO_TIMER;
       led_set(&led_display);
@@ -374,7 +379,7 @@ int main(void)
         start_beep(key_beep, KEY_FREQ);
         counter =  set_counter();
         current_timer = key.pressed;
-        START_COUNT();
+        start_count = YES;
         count_finished = NO;
       }
       else if (current_timer != NO_TIMER) //для управляющих клавиш
