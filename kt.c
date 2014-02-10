@@ -34,8 +34,8 @@
 #define STOP_BEEP() reset_bit(TCCR0A,COM0B0)
 #define START_BEEP() set_bit(TCCR0A,COM0B0)
 
-const uint16_t MAX_FRAC = 60 * (TIMER_FREQ -1); // количество отчсетов таймера за 1 минуту
-const uint16_t REBEEP_FRAC = 30 * TIMER_FREQ; // пауза между повторными сигналами
+const uint16_t MAIN_TIMER_MAX = 60 * (TIMER_FREQ -1); // количество отчсетов таймера за 1 минуту
+const uint16_t REBEEP_TIMER_MAX = 30 * TIMER_FREQ; // пауза между повторными сигналами
 
 const uint8_t START_ROW = 1; // номера битов порта дл€ сканировани€ строк клавиатуры
 const uint8_t END_ROW = 4;
@@ -102,8 +102,8 @@ volatile uint8_t current_timer; // номер выбранного счетчика
 volatile uint8_t count_finished; // флаг окончани€ счета
 volatile uint8_t need_rebeep; // флаг повторного включени€ звка
 
-volatile uint16_t frac = 0; // отсчитывает доли до 1 минуты
-volatile uint16_t rebeep_frac = 0; //
+volatile uint16_t main_frac_counter = 0; // отсчитывает доли до 1 минуты
+volatile uint16_t rebeep_frac_counter = 0; //
 
 volatile CurrentBeep beep;
 volatile Key key;
@@ -249,7 +249,7 @@ inline static void scan_keyboard(void)
 
 inline int8_t set_counter(void)
 {
-  frac = 0;
+  main_frac_counter= 0;
   uint8_t value;
   value = eeprom_read_byte(&timer_preset[key.pressed]);
   if ( ( value > MAX_COUNT_VALUE) ||  (value == 0 ) )
@@ -259,21 +259,21 @@ inline int8_t set_counter(void)
   
 ISR (TIMER1_COMPA_vect)
 {
-  if ( frac == MAX_FRAC )
+  if ( main_frac_counter == MAIN_TIMER_MAX )
   {
-    frac = 0;
+    main_frac_counter = 0;
     counter--;
   }
   else
-    frac++;
+    main_frac_counter++;
 
-  if ( rebeep_frac == REBEEP_FRAC )
+  if ( rebeep_frac_counter == REBEEP_TIMER_MAX )
   {
     need_rebeep = YES;
-    rebeep_frac = 0;
+    rebeep_frac_counter = 0;
   }
   else
-    need_rebeep++;
+    rebeep_frac_counter++;
   
   return;
 }
@@ -355,7 +355,7 @@ int main(void)
       led_set(&led_display);
       last_counter = counter;
       start_beep(end_beep, END_FREQ);
-      rebeep_frac = 0;
+      rebeep_frac_counter = 0;
       need_rebeep = NO;
       count_finished = YES;
     }
@@ -363,7 +363,7 @@ int main(void)
     if(counter == NO_COUNT && count_finished == YES && need_rebeep == YES)
     {
       start_beep(end_beep, END_FREQ);
-      rebeep_frac = 0;      
+      rebeep_frac_counter = 0;      
       need_rebeep = NO;
     }
 
@@ -375,6 +375,7 @@ int main(void)
         counter =  set_counter();
         current_timer = key.pressed;
         START_COUNT();
+        count_finished = NO;
       }
       else if (current_timer != NO_TIMER) //дл€ управл€ющих клавиш
       {
