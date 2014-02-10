@@ -323,6 +323,7 @@ int main(void)
   OCR1BH = 0x00;
   OCR1BL = 0x00;
 
+  // прерывания от таймеров
   TIMSK = _BV(OCIE1A) | _BV(OCIE1B);
 
   // выключаем Universal Serial Interface
@@ -350,13 +351,15 @@ int main(void)
   {
     if(counter.current == 0)
     {
+      start_beep(end_beep, END_FREQ);
+      
       counter.current = NO_COUNT;
       counter.index = NO_INDEX;
-      led_set(&led_display);
-      counter.last = counter.current;
-      start_beep(end_beep, END_FREQ);
+      //counter.last = counter.current;      
       counter.finished = YES;
       
+//      led_set(&led_display);
+     
       rebeep_fraction = 0;
       need_rebeep = NO;
     }
@@ -399,7 +402,7 @@ int main(void)
           start_beep(key_beep, KEY_FREQ);
           counter.current++;
         }
-        }
+      }
       key.used = key.pressed;
     }
     
@@ -408,7 +411,7 @@ int main(void)
       led_set(&led_display);
       counter.last = counter.current;
     }
-    
+
     led_show(led_display);
   }
   return 0;
