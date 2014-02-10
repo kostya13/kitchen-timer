@@ -53,7 +53,7 @@ enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4, NOT
 enum NO_ACTION { NO_INDEX = 100, NO_COUNT = 100, NO_DIGIT = 63, STOP = -1};
 enum BEEP_STATUS { BEEP_ON, BEEP_OFF};
 enum YES_NO { NO = 0, YES = 1};
-enum STATES { STATE_FIRST_START, STATE_COUNTING, STATE_WAIT};
+enum STATES { STATE_COUNTING, STATE_WAIT};
 
 typedef struct current_beep
 {
@@ -269,30 +269,32 @@ uint8_t key_pressed(void)
       counter.fraction = 0;        
       counter.index = key.pressed;        
       counter.finished = NO;
+      key.used = key.pressed;
     }
     else if (counter.index != NO_INDEX) //дл€ управл€ющих клавиш
     {
       if(key.pressed == SAVE_KEY )
       {
         start_beep(save_beep,SAVE_FREQ);
-        eeprom_write_byte(&timer_preset[counter.index], counter.current);          
+        eeprom_write_byte(&timer_preset[counter.index], counter.current);
+        key.used = key.pressed;
       }
       else if(key.pressed == STAR_KEY && counter.current > 1)
       {
         start_beep(key_beep, KEY_FREQ);
         counter.current--;
+        key.used = key.pressed;
       }
       else if(key.pressed == HASH_KEY && counter.current < MAX_COUNT_VALUE)
       {
         start_beep(key_beep, KEY_FREQ);
         counter.current++;
+        key.used = key.pressed;
       }
     }
-    key.used = key.pressed;
-    return YES;
   }
-  else
-    return NO;
+
+  return  key.used == key.pressed;;
 
 }
 
@@ -387,45 +389,50 @@ int main(void)
   counter.finished = NO;
   counter.last = counter.current;
 
+  need_rebeep = NO;
+
   Led led_display;
   led_set(&led_display);
 
-  int8_t state = STATE_FIRST_START;
+  int8_t state = STATE_WAIT;
   sei();
   while (1)
   {
 
     switch(state)
     {
-    case STATE_FIRST_START:
-      break;
-    case STATE_COUNTING:
-      break;
     case STATE_WAIT:
+      if( need_rebeep == YES)
+      {
+        start_beep(end_beep, END_FREQ);
+        rebeep_fraction = 0;      
+        need_rebeep = NO;
+      }
+      
+      if(key_pressed())
+        state = STATE_COUNTING;
       break;
+     
+    case STATE_COUNTING:
+      key_pressed();
+      
+      if(counter.current == 0)
+      {
+        start_beep(end_beep, END_FREQ);
+      
+        counter.current = NO_COUNT;
+        counter.index = NO_INDEX;
+        counter.finished = YES;
+      
+        rebeep_fraction = 0;
+        need_rebeep = NO;
+        state = STATE_WAIT;
+      }
+      break;
+      
     default:
+      state = STATE_WAIT;
     }
-    
-    if(counter.current == 0)
-    {
-      start_beep(end_beep, END_FREQ);
-      
-      counter.current = NO_COUNT;
-      counter.index = NO_INDEX;
-      counter.finished = YES;
-      
-      rebeep_fraction = 0;
-      need_rebeep = NO;
-    }
-
-    if(counter.current == NO_COUNT && counter.finished == YES && need_rebeep == YES)
-    {
-      start_beep(end_beep, END_FREQ);
-      rebeep_fraction = 0;      
-      need_rebeep = NO;
-    }
-
-    key_pressed();
     
     if(counter.current != counter.last)
     {
