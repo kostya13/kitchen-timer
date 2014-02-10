@@ -32,7 +32,7 @@
 #define START_BEEP() set_bit(TCCR0A,COM0B0)
 
 const uint16_t MAIN_TIMER_MAX = 60 * (TIMER_FREQ -1); // количество отчсетов таймера за 1 минуту
-const uint16_t REBEEP_TIMER_MAX = 30 * TIMER_FREQ; // пауза между повторными сигналами
+const uint16_t REBEEP_TIMER_MAX = 10 * TIMER_FREQ; // пауза между повторными сигналами
 
 const uint8_t START_ROW = 1; // номера битов порта для сканирования строк клавиатуры
 const uint8_t END_ROW = 4;
@@ -43,7 +43,7 @@ const uint8_t KEY_TIME = 5;    // время задержки при нажатии на клавиши
 const uint8_t SHIFT_TIME = 10; // (n/TIMER_FREQ)*4 (сек.)
 const uint8_t SAVE_TIME = 100; // так как проверяется после 4 проходов по строкам
 
-const uint8_t KEY_FREQ = 250; // частоты пищалки для разных типов событий
+const uint8_t KEY_FREQ = 200; // частоты пищалки для разных типов событий
 const uint8_t END_FREQ = 80;
 const uint8_t SAVE_FREQ = 150;
 
@@ -96,7 +96,7 @@ const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16};
 //максимальное значение числа: от -127 до +127.
 //Если неободима большая длительность можно поставить несколько значений звучания подряд.
 const int8_t key_beep[] = { 2, STOP};
-const int8_t end_beep[] = { 5, -20,  5, -20, 5, STOP};
+const int8_t end_beep[] = { 55, -10,  55, -10, 55, -10, 55, -10, 55, STOP};
 const int8_t save_beep[] = { 10, -10,  5, STOP};
 
 //значения таймера по умолчанию
@@ -191,6 +191,7 @@ inline void check_beep(void)
 inline static void scan_keyboard(void)
 {
   static int8_t current_key = NO_KEY_PRESSED ;
+  static int8_t last_key = NO_KEY_PRESSED ;
   static uint8_t pressed_time = 0;
   static int8_t current_row = START_ROW ;
 
@@ -238,7 +239,7 @@ inline static void scan_keyboard(void)
     uint8_t accept = 0;
     if (current_key == SAVE_KEY && pressed_time >= SAVE_TIME)
       accept = 1;
-    else if ((current_key == STAR_KEY || current_key == HASH_KEY) && pressed_time >= SHIFT_TIME)
+    else if ((current_key == STAR_KEY || current_key == HASH_KEY) && pressed_time >= SHIFT_TIME && last_key != SAVE_KEY )
       accept = 1;
     else if ((current_key >= 0 && current_key <= 9) && pressed_time >= KEY_TIME)
       accept = 1;
@@ -247,6 +248,7 @@ inline static void scan_keyboard(void)
     {
       key.used = NOT_USED;
       key.pressed = current_key;
+      last_key = current_key;
     }
   }
   current_row = START_ROW;
