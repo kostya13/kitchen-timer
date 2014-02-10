@@ -39,8 +39,7 @@ const uint8_t END_ROW = 4;
 
 const uint8_t MAX_COUNT_VALUE = 99;
 
-const uint8_t KEY_TIME = 5;    // врем€ задержки при нажатии на клавиши
-const uint8_t SHIFT_TIME = 10; // (n/TIMER_FREQ)*4 (сек.)
+const uint8_t KEY_TIME = 1;    // врем€ задержки при нажатии на клавиши (n/TIMER_FREQ)*4 (сек.)
 const uint8_t SAVE_TIME = 100; // так как провер€етс€ после 4 проходов по строкам
 
 const uint8_t KEY_FREQ = 200; // частоты пищалки дл€ разных типов событий
@@ -54,6 +53,7 @@ enum NO_ACTION { NO_INDEX = 100, NO_COUNT = 100, NO_DIGIT = 63, STOP = -1};
 enum BEEP_STATUS { BEEP_ON, BEEP_OFF};
 enum YES_NO { NO = 0, YES = 1};
 enum STATES { STATE_COUNTING, STATE_WAIT};
+enum KEY_ACTIONS { ACTION_NONE, ACTION_PRESSED, ACTION_SAVE};
 
 typedef struct current_beep
 {
@@ -73,6 +73,7 @@ typedef struct key_struct
 {
   int8_t pressed;
   int8_t used;
+  int8_t action;
 } Key;
 
 typedef struct counter_struct
@@ -116,16 +117,8 @@ volatile Counter counter;
 
 inline void led_set(Led *led)
 {
-  if (counter.current == NO_COUNT)
-  {
-    led->first_digit = NO_DIGIT;
-    led->second_digit  = NO_DIGIT;
-  }
-  else
-  {
-    led->first_digit =  pgm_read_byte( &led_digits[counter.current / 10]);
-    led->second_digit = pgm_read_byte( &led_digits[counter.current % 10]);
-  }
+  led->first_digit =  pgm_read_byte( &led_digits[counter.current / 10]);
+  led->second_digit = pgm_read_byte( &led_digits[counter.current % 10]);
 }
 
 inline static void led_show(Led led)
@@ -204,105 +197,92 @@ inline static void scan_keyboard(void)
   uint8_t column1 = (~PINA) & 0x01;
   uint8_t column2 = (~PINA) & 0x02;
 
-  if( current_row == END_ROW && ( column0 && column2))
-    current_key = SAVE_KEY;
-  else
-  {
-    int8_t shift = -1;
-    if( column0)
-      shift = 0;
-    else if ( column1 )
-      shift = 1;
-    else if( column2 )
-      shift = 2;
-    if ( shift >= 0)
-      current_key = pgm_read_byte(&keyboard_decoder[current_row-1][shift]);
-  }
+  int8_t shift = -1;
+  if(column0)
+    shift = 0;
+  else if (column1)
+    shift = 1;
+  else if(column2)
+    shift = 2;
+  if ( shift >= 0)
+    current_key = pgm_read_byte(&keyboard_decoder[current_row-1][shift]);
   
   set_bit(PORTD, current_row);
   current_row++;
 
-  if (current_key != NO_KEY_PRESSED && pressed_time <  UINT8_MAX)
-    pressed_time++;
-  
   if (current_row < END_ROW + 1)
     return;
+  
+  if (current_key != NO_KEY_PRESSED && pressed_time <  UINT8_MAX)
+    pressed_time++;
 
   if( current_key == NO_KEY_PRESSED)
   {
-    pressed_time = 0;
-    key.used = NOT_USED;
-    key.pressed = NO_KEY_PRESSED;
-  }
-  else if ( current_key != key.used)
-  {
-    uint8_t accept = 0;
-    if (current_key == SAVE_KEY && pressed_time >= SAVE_TIME)
-      accept = 1;
-    else if ((current_key == STAR_KEY || current_key == HASH_KEY) && pressed_time >= SHIFT_TIME && last_key != SAVE_KEY )
-      accept = 1;
-    else if ((current_key >= 0 && current_key <= 9) && pressed_time >= KEY_TIME)
-      accept = 1;
+    if(pressed_time > KEY_TIME && pressed_time < SAVE_TIME)
+      key.action = ACTION_PRESSED;
 
-    if (accept)
-    {
+      pressed_time = 0;
       key.used = NOT_USED;
-      key.pressed = current_key;
-      last_key = current_key;
-    }
   }
+  else if (pressed_time > SAVE_TIME && key.used == NOT_USED)
+  {
+    key.action = ACTION_SAVE;
+  }
+  
   current_row = START_ROW;
+  key.pressed = last_key;
+  last_key = current_key;
 
 }
 
 
 uint8_t key_pressed(void)
 {
-  if(key.pressed  > NO_KEY_PRESSED && key.used == NOT_USED)
+  switch(key.action)
   {
-    if(key.pressed >= 0) //нажата цифрова€ клавиша
+  case ACTION_PRESSED:
+    if(key.pressed >= 0 && key.pressed <=9) //нажата цифрова€ клавиша
     {
-      start_beep(key_beep, KEY_FREQ);
-
       counter.current = eeprom_read_byte(&timer_preset[key.pressed]);
       if ((counter.current > MAX_COUNT_VALUE) || (counter.current == 0))
         counter.current = pgm_read_byte(&timer_preset_default[key.pressed]);
-        
-      counter.fraction = 0;        
-      counter.index = key.pressed;        
-      counter.finished = NO;
-      key.used = key.pressed;
     }
-    else if (counter.index != NO_INDEX) //дл€ управл€ющих клавиш
+    else if(key.pressed == STAR_KEY)
     {
-      if(key.pressed == SAVE_KEY )
-      {
-        start_beep(save_beep,SAVE_FREQ);
-        eeprom_write_byte(&timer_preset[counter.index], counter.current);
-        key.used = key.pressed;
-      }
-      else if(key.pressed == STAR_KEY && counter.current > 1)
-      {
-        start_beep(key_beep, KEY_FREQ);
-        counter.current--;
-        key.used = key.pressed;
-      }
-      else if(key.pressed == HASH_KEY && counter.current < MAX_COUNT_VALUE)
-      {
-        start_beep(key_beep, KEY_FREQ);
-        counter.current++;
-        key.used = key.pressed;
-      }
+      counter.current--;
+      if (counter.current == 0)
+        counter.current = MAX_COUNT_VALUE;
     }
+    else if(key.pressed == HASH_KEY)
+    {
+      counter.current++;
+      if(counter.current > MAX_COUNT_VALUE)
+        counter.current = 1;
+    }
+
+    start_beep(key_beep, KEY_FREQ);
+    counter.fraction = 0;        
+    counter.finished = NO;
+    key.action = ACTION_NONE;
+    
+    return YES;
+  case ACTION_SAVE:
+    if(key.pressed >= 0 && key.pressed <=9) //нажата цифрова€ клавиша
+    {
+      start_beep(save_beep,SAVE_FREQ);
+      eeprom_write_byte(&timer_preset[key.pressed], counter.current);
+    }
+    key.used = key.pressed;
+    key.action = ACTION_NONE;
+    return NO;
   }
-
-  return  key.used == key.pressed;;
-
+  
+  return NO;
 }
 
 ISR (TIMER1_COMPA_vect)
 {
-  if(counter.current != NO_COUNT)
+  if(counter.current > 0)
   {
     if (counter.fraction == MAIN_TIMER_MAX)
     {
@@ -384,10 +364,10 @@ int main(void)
   beep.status = BEEP_OFF;
 
   key.pressed = NO_KEY_PRESSED;
+  key.action = ACTION_NONE;
   key.used = NOT_USED;
-
-  counter.current =  NO_COUNT;
-  counter.index = NO_INDEX;
+  
+  counter.current =  0;
   counter.finished = NO;
   counter.last = counter.current;
 
@@ -422,8 +402,6 @@ int main(void)
       {
         start_beep(end_beep, END_FREQ);
       
-        counter.current = NO_COUNT;
-        counter.index = NO_INDEX;
         counter.finished = YES;
       
         rebeep_fraction = 0;
