@@ -230,11 +230,11 @@ inline static void scan_keyboard(void)
   else if ( current_key != key.used)
   {
     uint8_t accept = 0;
-    if (current_key == SAVE_KEY && pressed_time >=  SAVE_TIME)
+    if (current_key == SAVE_KEY && pressed_time >= SAVE_TIME)
       accept = 1;
-    else if ((current_key == STAR_KEY || current_key == HASH_KEY) && pressed_time >=  SHIFT_TIME)
+    else if ((current_key == STAR_KEY || current_key == HASH_KEY) && pressed_time >= SHIFT_TIME)
       accept = 1;
-    else if ((current_key >= 0 && current_key <= 9) && pressed_time >=  KEY_TIME )
+    else if ((current_key >= 0 && current_key <= 9) && pressed_time >= KEY_TIME)
       accept = 1;
 
     if (accept)
@@ -252,14 +252,14 @@ inline int8_t set_counter(void)
   main_frac_counter= 0;
   uint8_t value;
   value = eeprom_read_byte(&timer_preset[key.pressed]);
-  if ( ( value > MAX_COUNT_VALUE) ||  (value == 0 ) )
+  if ((value > MAX_COUNT_VALUE) || (value == 0))
     value = pgm_read_byte(&timer_preset_default[key.pressed]);
   return value;
 }
   
 ISR (TIMER1_COMPA_vect)
 {
-  if ( main_frac_counter == MAIN_TIMER_MAX )
+  if (main_frac_counter == MAIN_TIMER_MAX)
   {
     main_frac_counter = 0;
     counter--;
@@ -267,7 +267,7 @@ ISR (TIMER1_COMPA_vect)
   else
     main_frac_counter++;
 
-  if ( rebeep_frac_counter == REBEEP_TIMER_MAX )
+  if (rebeep_frac_counter == REBEEP_TIMER_MAX)
   {
     need_rebeep = YES;
     rebeep_frac_counter = 0;
