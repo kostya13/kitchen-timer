@@ -53,6 +53,7 @@ enum KEYS {HASH_KEY = -1, STAR_KEY = -2, SAVE_KEY = -3, NO_KEY_PRESSED = -4, NOT
 enum NO_ACTION { NO_INDEX = 100, NO_COUNT = 100, NO_DIGIT = 63, STOP = -1};
 enum BEEP_STATUS { BEEP_ON, BEEP_OFF};
 enum YES_NO { NO = 0, YES = 1};
+enum STATES { STATE_FIRST_START, STATE_COUNTING, STATE_WAIT};
 
 typedef struct current_beep
 {
@@ -251,7 +252,50 @@ inline static void scan_keyboard(void)
   current_row = START_ROW;
 
 }
-  
+
+
+uint8_t key_pressed(void)
+{
+  if(key.pressed  > NO_KEY_PRESSED && key.used == NOT_USED)
+  {
+    if(key.pressed >= 0) //нажата цифрова€ клавиша
+    {
+      start_beep(key_beep, KEY_FREQ);
+
+      counter.current = eeprom_read_byte(&timer_preset[key.pressed]);
+      if ((counter.current > MAX_COUNT_VALUE) || (counter.current == 0))
+        counter.current = pgm_read_byte(&timer_preset_default[key.pressed]);
+        
+      counter.fraction = 0;        
+      counter.index = key.pressed;        
+      counter.finished = NO;
+    }
+    else if (counter.index != NO_INDEX) //дл€ управл€ющих клавиш
+    {
+      if(key.pressed == SAVE_KEY )
+      {
+        start_beep(save_beep,SAVE_FREQ);
+        eeprom_write_byte(&timer_preset[counter.index], counter.current);          
+      }
+      else if(key.pressed == STAR_KEY && counter.current > 1)
+      {
+        start_beep(key_beep, KEY_FREQ);
+        counter.current--;
+      }
+      else if(key.pressed == HASH_KEY && counter.current < MAX_COUNT_VALUE)
+      {
+        start_beep(key_beep, KEY_FREQ);
+        counter.current++;
+      }
+    }
+    key.used = key.pressed;
+    return YES;
+  }
+  else
+    return NO;
+
+}
+
 ISR (TIMER1_COMPA_vect)
 {
   if(counter.current != NO_COUNT)
@@ -345,21 +389,31 @@ int main(void)
 
   Led led_display;
   led_set(&led_display);
-  
+
+  int8_t state = STATE_FIRST_START;
   sei();
   while (1)
   {
+
+    switch(state)
+    {
+    case STATE_FIRST_START:
+      break;
+    case STATE_COUNTING:
+      break;
+    case STATE_WAIT:
+      break;
+    default:
+    }
+    
     if(counter.current == 0)
     {
       start_beep(end_beep, END_FREQ);
       
       counter.current = NO_COUNT;
       counter.index = NO_INDEX;
-      //counter.last = counter.current;      
       counter.finished = YES;
       
-//      led_set(&led_display);
-     
       rebeep_fraction = 0;
       need_rebeep = NO;
     }
@@ -371,40 +425,7 @@ int main(void)
       need_rebeep = NO;
     }
 
-    if(key.pressed  > NO_KEY_PRESSED && key.used == NOT_USED)
-    {
-      if(key.pressed >= 0) //нажата цифрова€ клавиша
-      {
-        start_beep(key_beep, KEY_FREQ);
-
-        counter.current = eeprom_read_byte(&timer_preset[key.pressed]);
-        if ((counter.current > MAX_COUNT_VALUE) || (counter.current == 0))
-          counter.current = pgm_read_byte(&timer_preset_default[key.pressed]);
-        
-        counter.fraction = 0;        
-        counter.index = key.pressed;        
-        counter.finished = NO;
-      }
-      else if (counter.index != NO_INDEX) //дл€ управл€ющих клавиш
-      {
-        if(key.pressed == SAVE_KEY )
-        {
-          start_beep(save_beep,SAVE_FREQ);
-          eeprom_write_byte(&timer_preset[counter.index], counter.current);          
-        }
-        else if(key.pressed == STAR_KEY && counter.current > 1)
-        {
-          start_beep(key_beep, KEY_FREQ);
-          counter.current--;
-        }
-        else if(key.pressed == HASH_KEY && counter.current < MAX_COUNT_VALUE)
-        {
-          start_beep(key_beep, KEY_FREQ);
-          counter.current++;
-        }
-      }
-      key.used = key.pressed;
-    }
+    key_pressed();
     
     if(counter.current != counter.last)
     {
