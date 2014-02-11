@@ -14,7 +14,7 @@ $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
 Title ""
-Date "7 feb 2014"
+Date "11 feb 2014"
 Rev ""
 Comp ""
 Comment1 ""
@@ -339,19 +339,6 @@ $EndComp
 Wire Wire Line
 	9350 1850 9150 1850
 $Comp
-L POWER_GND #08
-U 1 1 52F4E9A0
-P 5400 3500
-F 0 "#08" V 5350 3450 60  0001 C CNN
-F 1 "POWER_GND" V 5450 3450 60  0001 C CNN
-F 2 "" H 5400 3500 60  0001 C CNN
-F 3 "" H 5400 3500 60  0001 C CNN
-	1    5400 3500
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	5400 3500 5400 3400
-$Comp
 L PWR_FLAG #FLG09
 U 1 1 52F4E9E4
 P 6900 3600
@@ -379,4 +366,6 @@ F 3 "" H 8150 2700 60  0000 C CNN
 $EndComp
 Wire Wire Line
 	8300 2700 8150 2700
+NoConn ~ 5400 3400
+NoConn ~ 7300 2400
 $EndSCHEMATC
