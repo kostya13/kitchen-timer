@@ -13,7 +13,7 @@
 #include <inttypes.h>
 #include <util/delay.h>
 
-#define TIMER_FREQ  100UL // Требуемая частота таймера (Герц)
+#define TIMER_FREQ 100UL // Требуемая частота таймера (Герц)
 #define TIMER_PRESCALER 1 // Установить значение делителя таймера в TCCR1B (Bits 2:0)
 
 #define MAX_TIMER  (F_CPU / TIMER_PRESCALER) / TIMER_FREQ // максимальное значение таймера в режиме CTC
@@ -52,12 +52,14 @@ enum YES_NO { NO = 0, YES = 1};
 enum STATES { STATE_COUNTING, STATE_WAIT};
 enum KEY_ACTIONS { ACTION_NONE, ACTION_PRESSED, ACTION_SAVE};
 
-typedef struct current_beep
+typedef struct beep_struct
 {
-  int8_t status;
-  uint8_t position;
-  const int8_t *melody;
-  uint8_t timer;
+  int8_t enable; // состояние вывода звука (включен или выключен)
+  uint8_t position; // позиция в массиве звука
+  const int8_t *sound; //выбраный массив звука
+  uint8_t play; // счетчик длительности звука
+  uint8_t repeat; // флаг повторного включения звука
+  uint16_t pause; // пауза между повторами
 } CurrentBeep;
 
 typedef struct led_struct
@@ -68,9 +70,9 @@ typedef struct led_struct
 
 typedef struct key_struct
 {
-  int8_t pressed;
-  int8_t used;
-  int8_t action;
+  int8_t pressed; // номер нажатой кнопки
+  int8_t used;    // кнопка была использована
+  int8_t action; // действие для нажатой кнопки
 } Key;
 
 typedef struct counter_struct
@@ -82,10 +84,8 @@ typedef struct counter_struct
   uint16_t fraction; // отсчитывает доли для current
 } Counter;
 
-const int8_t keyboard_decoder[4][3] PROGMEM = {{ 1, 2, 3}, { 4, 5, 6}, {7, 8, 9}, {STAR_KEY, 0, HASH_KEY}};
-const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16};
 
-//Последовательность звуков для разных событий
+//Звуки для разных событий.
 //Формат:
 //Положительные числа задают длительность звучения, отрицательные - длительность паузы,
 //Специальное значение STOP означает конец звучания.
@@ -95,22 +95,19 @@ const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16};
 //Если неободима большая длительность можно поставить несколько значений звучания подряд.
 const int8_t key_beep[] = { 2, STOP};
 const int8_t end_beep[] = { 55, -10,  55, -10, 55, -10, 55, -10, 55, STOP};
-const int8_t save_beep[] = { 10, -10,  5, STOP};
+const int8_t save_beep[] = { 10, -10,  10, STOP};
 
 //значения таймера по умолчанию
-const uint8_t timer_preset_default[10] PROGMEM  = { 99, 3, 20, 30, 40, 50, 60, 70, 80, 90 };
-//значения EEPROM по умолчанию. Загружаются в контроллер отдельной командой
+const uint8_t timer_preset_default[10] PROGMEM  = { 99, 10, 20, 30, 40, 50, 60, 70, 80, 90 };
+//значения таймера в EEPROM по умолчанию. Загружаются в контроллер отдельной командой
 uint8_t EEMEM timer_preset[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-volatile uint8_t need_rebeep; // флаг повторного включения звка
-volatile uint16_t rebeep_fraction = 0; //
+const int8_t keyboard_decoder[4][3] PROGMEM = {{ 1, 2, 3}, { 4, 5, 6}, {7, 8, 9}, {STAR_KEY, 0, HASH_KEY}};
+const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16};
 
 volatile CurrentBeep beep;
-
 volatile Key key;
-
 volatile Counter counter;
-
 
 inline void led_set(Led *led)
 {
@@ -133,31 +130,31 @@ inline static void led_show(Led led)
 inline void start_beep(const int8_t* set_beep, uint8_t freq)
 {
   beep.position = 1;
-  beep.melody = set_beep;
-  beep.timer = beep.melody[0];
+  beep.sound = set_beep;
+  beep.play = beep.sound[0];
   OCR0A = freq;
   set_bit(TCCR0A,COM0B0);
-  beep.status = BEEP_ON;
+  beep.enable = BEEP_ON;
 }
 
 inline void check_beep(void)
 {
-  if (beep.status != BEEP_ON)
+  if (beep.enable != BEEP_ON)
     return;
 
-  if(beep.timer > 0)
+  if(beep.play > 0)
   {
-    beep.timer--;
+    beep.play--;
     return;
   }
   
-  int8_t current = beep.melody[beep.position];
+  int8_t current = beep.sound[beep.position];
   int8_t pause_flag = current & 0x80;
   int8_t delay;
 
   if (current == STOP)
   {
-    beep.status = BEEP_OFF;
+    beep.enable = BEEP_OFF;
     STOP_BEEP();
     return;
   }
@@ -173,7 +170,7 @@ inline void check_beep(void)
     delay = current;
   }
   
-  beep.timer = delay;
+  beep.play = delay;
   beep.position++;
 
 }
@@ -235,49 +232,60 @@ inline static void scan_keyboard(void)
 
 }
 
+inline uint8_t is_digit_key(void)
+{
+  return key.pressed >= 0 && key.pressed <= 9;
+}
 
 uint8_t key_pressed(void)
 {
-  switch(key.action)
+  if(key.action != ACTION_PRESSED)
   {
-  case ACTION_PRESSED:
-    if(key.pressed >= 0 && key.pressed <=9) //нажата цифровая клавиша
-    {
-      counter.current = eeprom_read_byte(&timer_preset[key.pressed]);
-      if ((counter.current > MAX_COUNT_VALUE) || (counter.current == 0))
-        counter.current = pgm_read_byte(&timer_preset_default[key.pressed]);
-    }
-    else if(key.pressed == STAR_KEY)
-    {
-      counter.current--;
-      if (counter.current == 0)
-        counter.current = MAX_COUNT_VALUE;
-    }
-    else if(key.pressed == HASH_KEY)
-    {
-      counter.current++;
-      if(counter.current > MAX_COUNT_VALUE)
-        counter.current = 1;
-    }
-
-    start_beep(key_beep, KEY_FREQ);
-    counter.fraction = 0;        
-    counter.finished = NO;
-    key.action = ACTION_NONE;
-    
-    return YES;
-  case ACTION_SAVE:
-    if(key.pressed >= 0 && key.pressed <=9) //нажата цифровая клавиша
-    {
-      start_beep(save_beep,SAVE_FREQ);
-      eeprom_write_byte(&timer_preset[key.pressed], counter.current);
-    }
-    key.used = key.pressed;
-    key.action = ACTION_NONE;
     return NO;
   }
-  
-  return NO;
+
+  if(is_digit_key())
+  {
+    counter.current = eeprom_read_byte(&timer_preset[key.pressed]);
+    if ((counter.current > MAX_COUNT_VALUE) || (counter.current == 0))
+    {
+      counter.current = pgm_read_byte(&timer_preset_default[key.pressed]);
+    }
+  }
+  else if(key.pressed == STAR_KEY)
+  {
+    counter.current--;
+    if (counter.current == 0)
+    {
+      counter.current = MAX_COUNT_VALUE;
+    }
+  }
+  else if(key.pressed == HASH_KEY)
+  {
+    counter.current++;
+    if(counter.current > MAX_COUNT_VALUE)
+    {
+      counter.current = 1;
+    }
+  }
+  else
+  {
+    return NO;
+  }
+
+  start_beep(key_beep, KEY_FREQ);
+  counter.fraction = 0;        
+  counter.finished = NO;
+  key.action = ACTION_NONE;
+    
+  return YES;
+}
+
+inline void end_count(void)
+{
+  start_beep(end_beep, END_FREQ);
+  beep.pause = 0;      
+  beep.repeat = NO;
 }
 
 ISR (TIMER1_COMPA_vect)
@@ -295,13 +303,13 @@ ISR (TIMER1_COMPA_vect)
   
   if(counter.finished == YES)
   {
-    if (rebeep_fraction == REBEEP_TIMER_MAX)
+    if (beep.pause == REBEEP_TIMER_MAX)
     {
-      need_rebeep = YES;
-      rebeep_fraction = 0;
+      beep.repeat = YES;
+      beep.pause = 0;
     }
     else
-      rebeep_fraction++;
+      beep.pause++;
   }
   
   return;
@@ -361,7 +369,7 @@ int main(void)
   ACSR=0x80;
 
   
-  beep.status = BEEP_OFF;
+  beep.enable = BEEP_OFF;
 
   key.pressed = NO_KEY_PRESSED;
   key.action = ACTION_NONE;
@@ -371,7 +379,7 @@ int main(void)
   counter.finished = NO;
   counter.last = counter.current;
 
-  need_rebeep = NO;
+  beep.repeat = NO;
 
   Led led_display;
   led_set(&led_display);
@@ -380,15 +388,12 @@ int main(void)
   sei();
   while (1)
   {
-
     switch(state)
     {
     case STATE_WAIT:
-      if( need_rebeep == YES)
+      if(beep.repeat == YES)
       {
-        start_beep(end_beep, END_FREQ);
-        rebeep_fraction = 0;      
-        need_rebeep = NO;
+        end_count();
       }
       
       if(key_pressed())
@@ -397,15 +402,22 @@ int main(void)
      
     case STATE_COUNTING:
       key_pressed();
+
+      if( key.action == ACTION_SAVE)
+      {
+        if(is_digit_key()) 
+        {
+          start_beep(save_beep,SAVE_FREQ);
+          eeprom_write_byte(&timer_preset[key.pressed], counter.current);
+        }
+        key.used = key.pressed;
+        key.action = ACTION_NONE;
+      }
       
       if(counter.current == 0)
       {
-        start_beep(end_beep, END_FREQ);
-      
+        end_count();        
         counter.finished = YES;
-      
-        rebeep_fraction = 0;
-        need_rebeep = NO;
         state = STATE_WAIT;
       }
       break;
