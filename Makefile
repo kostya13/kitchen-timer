@@ -12,10 +12,10 @@ MY_F_CPU = 1000000
 MY_TARGET = kt
 
 # Используемый программатор (для AVRDUDE)
-MY_AVRDUDE_PROGRAMMER = stk200
+MY_AVRDUDE_PROGRAMMER = usbasp
 
 # Порт, к которому подключен программатор
-MY_PROGRAMMER_PORT = lpt1
+#MY_PROGRAMMER_PORT = usb
 
 # Уровень оптимизации (может быть 0, 1, 2, 3, s)
 # 0 - выключает оптимизацию, s - оптимизирует размер файла
@@ -24,22 +24,6 @@ OPTIMIZATION_LEVEL = s
 #=======================================
 
 
-#----------------------------------------------------------------------------
-# WinAVR Makefile Template written by Eric B. Weddington, Jцrg Wunsch, et al.
-#
-# Released to the Public Domain
-#
-# Additional material for this makefile was written by:
-# Peter Fleury
-# Tim Henigan
-# Colin O'Flynn
-# Reiner Patommel
-# Markus Pfaff
-# Sander Pool
-# Frederik Rouleau
-# Carlos Lamas
-#
-#----------------------------------------------------------------------------
 # On command line:
 #
 # make all = Make software.
@@ -64,29 +48,8 @@ OPTIMIZATION_LEVEL = s
 # To rebuild project do "make clean" then "make all".
 #----------------------------------------------------------------------------
 
-
-# MCU name
 MCU = $(MY_MCU)
 
-
-# Processor frequency.
-#     This will define a symbol, F_CPU, in all source code files equal to the 
-#     processor frequency. You can then use this symbol in your source code to 
-#     calculate timings. Do NOT tack on a 'UL' at the end, this will be done
-#     automatically to create a 32-bit value in your source code.
-#     Typical values are:
-#         F_CPU =  1000000
-#         F_CPU =  1843200
-#         F_CPU =  2000000
-#         F_CPU =  3686400
-#         F_CPU =  4000000
-#         F_CPU =  7372800
-#         F_CPU =  8000000
-#         F_CPU = 11059200
-#         F_CPU = 14745600
-#         F_CPU = 16000000
-#         F_CPU = 18432000
-#         F_CPU = 20000000
 F_CPU = $(MY_F_CPU)
 
 
@@ -289,7 +252,7 @@ LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
 AVRDUDE_PROGRAMMER = $(MY_AVRDUDE_PROGRAMMER)
 
 # com1 = serial port. Use lpt1 to connect to parallel port.
-AVRDUDE_PORT = $(MY_PROGRAMMER_PORT)
+#AVRDUDE_PORT = $(MY_PROGRAMMER_PORT)
 
 AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 #AVRDUDE_WRITE_EEPROM = -U eeprom:w:$(TARGET).eep
@@ -309,7 +272,8 @@ AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 # to submit bug reports.
 #AVRDUDE_VERBOSE = -v -v
 
-AVRDUDE_FLAGS = -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER)
+#AVRDUDE_FLAGS = -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER)
+AVRDUDE_FLAGS = -p $(MCU)  -c $(AVRDUDE_PROGRAMMER)
 AVRDUDE_FLAGS += $(AVRDUDE_NO_VERIFY)
 AVRDUDE_FLAGS += $(AVRDUDE_VERBOSE)
 AVRDUDE_FLAGS += $(AVRDUDE_ERASE_COUNTER)
