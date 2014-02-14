@@ -34,7 +34,7 @@
 #define START_BEEP() set_bit(TCCR0A,COM0B0)
 
 const uint16_t MAIN_TIMER_MAX = 60 * (TIMER_FREQ -1); // количество отчсетов таймера за 1 минуту
-const uint16_t REBEEP_TIMER_MAX = 10 * TIMER_FREQ; // пауза между повторными сигналами
+const uint16_t REBEEP_TIMER_MAX = 15 * TIMER_FREQ; // пауза между повторными сигналами
 
 const uint8_t MAX_COUNT_VALUE = 99;
 
@@ -376,12 +376,15 @@ int main(void)
   key.pressed = NO_KEY_PRESSED;
   key.action = ACTION_NONE;
   key.used = NOT_USED;
-  
+
+  // сразу после включения таймер будет периодически пищать
+  // чтобы напомнить, что он включен
   counter.current =  0;
-  counter.finished = NO;
+  counter.finished = YES;
   counter.last = counter.current;
 
   beep.repeat = NO;
+  beep.pause = 0;        
 
   Led led_display;
   led_set(&led_display);
