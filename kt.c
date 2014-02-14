@@ -25,15 +25,15 @@
 #endif
 
 #define low(x)  ((x) & 0xFF)
-#define high(x) (((x)>>8) & 0xFF)
+#define high(x) (((x) >> 8) & 0xFF)
 
 #define set_bit(port,bit)   port |= _BV(bit)
 #define reset_bit(port,bit) port &= ~(_BV(bit))
 
-#define STOP_BEEP() reset_bit(TCCR0A,COM0B0)
-#define START_BEEP() set_bit(TCCR0A,COM0B0)
+#define STOP_BEEP() reset_bit(TCCR0A, COM0B0)
+#define START_BEEP() set_bit(TCCR0A, COM0B0)
 
-const uint16_t MAIN_TIMER_MAX = 60 * (TIMER_FREQ -1); // количество отчсетов таймера за 1 минуту
+const uint16_t MAIN_TIMER_MAX = 60 * (TIMER_FREQ - 1); // количество отчсетов таймера за 1 минуту
 const uint16_t REBEEP_TIMER_MAX = 15 * TIMER_FREQ; // пауза между повторными сигналами
 
 const uint8_t MAX_COUNT_VALUE = 99;
@@ -49,10 +49,10 @@ const uint8_t SHOW_TIME = 1; // время свечения одного сегмента индикатора
 
 enum KEYS {HASH_KEY = -1, STAR_KEY = -2};
 enum NO_ACTION {NO_KEY_PRESSED = -4, NOT_USED = 5, STOP = -1};
-enum BEEP_STATUS { BEEP_ON, BEEP_OFF};
-enum YES_NO { NO = 0, YES = 1};
-enum STATES { STATE_COUNTING, STATE_WAIT};
-enum KEY_ACTIONS { ACTION_NONE, ACTION_PRESSED, ACTION_SAVE};
+enum BEEP_STATUS {BEEP_ON, BEEP_OFF};
+enum YES_NO {NO = 0, YES = 1};
+enum STATES {STATE_COUNTING, STATE_WAIT};
+enum KEY_ACTIONS {ACTION_NONE, ACTION_PRESSED, ACTION_SAVE};
 
 typedef struct beep_struct
 {
@@ -95,17 +95,17 @@ typedef struct counter_struct
 //Т.е если TIMER_FREQ=100, то при n=100 будет пищать 1 секунду
 //максимальное значение числа: от -127 до +127.
 //Если необходима большая длительность можно поставить несколько значений звучания подряд.
-const int8_t key_beep[] = { 2, STOP};
-const int8_t end_beep[] = { 55, -10,  55, -10, 55, -10, 55, -10, 55, STOP};
-const int8_t save_beep[] = { 10, -10,  10, STOP};
+const int8_t key_beep[] = {2, STOP};
+const int8_t end_beep[] = {55, -10,  55, -10, 55, -10, 55, -10, 55, STOP};
+const int8_t save_beep[] = {10, -10,  10, STOP};
 
 //значения таймера по умолчанию
-const uint8_t timer_preset_default[10] PROGMEM  = { 99, 10, 20, 30, 40, 50, 60, 70, 80, 90 };
+const uint8_t timer_preset_default[10] PROGMEM = {99, 10, 20, 30, 40, 50, 60, 70, 80, 90};
 //значения таймера в EEPROM по умолчанию. Загружаются в контроллер отдельной командой
-uint8_t EEMEM timer_preset[10] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t EEMEM timer_preset[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 const int8_t keyboard_decoder[4][3] PROGMEM = {{ 1, 2, 3}, { 4, 5, 6}, {7, 8, 9}, {STAR_KEY, 0, HASH_KEY}};
-const int8_t led_digits[] PROGMEM = { 64, 121, 36, 48, 25, 18, 2, 120, 0, 16};
+const int8_t led_digits[] PROGMEM = {64, 121, 36, 48, 25, 18, 2, 120, 0, 16};
 
 volatile CurrentBeep beep;
 volatile Key key;
@@ -113,20 +113,20 @@ volatile Counter counter;
 
 inline void led_set(Led *led)
 {
-  led->first_digit =  pgm_read_byte( &led_digits[counter.current / 10]);
-  led->second_digit = pgm_read_byte( &led_digits[counter.current % 10]);
+  led->first_digit = pgm_read_byte(&led_digits[counter.current / 10]);
+  led->second_digit = pgm_read_byte(&led_digits[counter.current % 10]);
 }
 
 inline static void led_show(Led led)
 {
   PORTB = led.second_digit;
-  set_bit(PORTB,PINB7);
+  set_bit(PORTB, PINB7);
   _delay_ms(SHOW_TIME);
 
   PORTB =  led.first_digit;
-  set_bit(PORTD,PIND6);
+  set_bit(PORTD, PIND6);
   _delay_ms(SHOW_TIME);
-  reset_bit(PORTD,PIND6);
+  reset_bit(PORTD, PIND6);
 }
 
 inline void start_beep(const int8_t* set_beep, uint8_t freq)
@@ -135,7 +135,7 @@ inline void start_beep(const int8_t* set_beep, uint8_t freq)
   beep.sound = set_beep;
   beep.play = beep.sound[0];
   OCR0A = freq;
-  set_bit(TCCR0A,COM0B0);
+  set_bit(TCCR0A, COM0B0);
   beep.enable = BEEP_ON;
 }
 
@@ -164,7 +164,7 @@ inline void check_beep(void)
   if (pause_flag)
   {
     STOP_BEEP();
-    delay = -1*current;
+    delay = -1 * current;
   }
   else 
   {
@@ -220,8 +220,8 @@ inline static void scan_keyboard(void)
     if(pressed_time > KEY_TIME && pressed_time < SAVE_TIME)
       key.action = ACTION_PRESSED;
 
-      pressed_time = 0;
-      key.used = NOT_USED;
+    pressed_time = 0;
+    key.used = NOT_USED;
   }
   else if (pressed_time > SAVE_TIME && key.used == NOT_USED)
   {
@@ -231,7 +231,6 @@ inline static void scan_keyboard(void)
   current_row = START_ROW;
   key.pressed = last_key;
   last_key = current_key;
-
 }
 
 inline uint8_t is_digit_key(void)
@@ -379,7 +378,7 @@ int main(void)
 
   // сразу после включения таймер будет периодически пищать
   // чтобы напомнить, что он включен
-  counter.current =  0;
+  counter.current = 0;
   counter.finished = YES;
   counter.last = counter.current;
 
@@ -412,7 +411,7 @@ int main(void)
       {
         if(is_digit_key()) 
         {
-          start_beep(save_beep,SAVE_FREQ);
+          start_beep(save_beep, SAVE_FREQ);
           eeprom_write_byte(&timer_preset[key.pressed], counter.current);
         }
         key.used = key.pressed;
