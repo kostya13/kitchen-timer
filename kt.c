@@ -34,15 +34,20 @@
 #define START_BEEP() set_bit(TCCR0A, COM0B0)
 
 const uint16_t MAIN_TIMER_MAX = 60 * (TIMER_FREQ - 1); // количество отчсетов таймера за 1 минуту
-const uint16_t REBEEP_TIMER_MAX = 15 * TIMER_FREQ; // пауза между повторными сигналами
+const uint16_t REBEEP_TIMER_MAX = 20 * TIMER_FREQ; // пауза между повторными сигналами
 
 const uint8_t MAX_COUNT_VALUE = 99;
 
 const uint8_t KEY_TIME = 1;    // время задержки при нажатии на клавиши (n/TIMER_FREQ)*4 (сек.)
 const uint8_t SAVE_TIME = 100; // так как проверяется после 4 проходов по строкам
 
+//формула расчета коэффициента для требуемой частоты
+// OCRA = F_CPU / (2 * N * FREQ) - 1
+// F_CPU - частота процессора, N - делитель счетчика, FREQ - заданная застота звука
 const uint8_t KEY_FREQ = 200; // частоты пищалки для разных типов событий
-const uint8_t END_FREQ = 80;
+//если используется пьезоизлучатель, то для максимальной громкости небходимо
+//установить резонансную частоту излучателя
+const uint8_t END_FREQ = 25;
 const uint8_t SAVE_FREQ = 150;
 
 const uint8_t SHOW_TIME = 1; // время свечения одного сегмента индикатора
@@ -96,7 +101,7 @@ typedef struct counter_struct
 //максимальное значение числа: от -127 до +127.
 //Если необходима большая длительность можно поставить несколько значений звучания подряд.
 const int8_t key_beep[] = {2, STOP};
-const int8_t end_beep[] = {55, -10,  55, -10, 55, -10, 55, -10, 55, STOP};
+const int8_t end_beep[] = {20, -3,  20, -3, 20, STOP};
 const int8_t save_beep[] = {10, -10,  10, STOP};
 
 //значения таймера по умолчанию
