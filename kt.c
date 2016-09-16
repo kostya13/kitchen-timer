@@ -1,8 +1,8 @@
-// -*- coding: windows-1251 -*-
+// -*- coding: utf-8 -*-
 
-// Февраль 2014г. Константин Ильяшенко <kx13@ya.ru>
+// ”евраль 2014г. Љонстантин €льЯшенко <kx13@ya.ru>
 
-// Макросы:
+// Њакросы:
 // F_CPU - частота процессора
 // MCU - тип микроконтроллера
 // определены в Makefile
@@ -15,8 +15,8 @@
 #include <inttypes.h>
 #include <util/delay.h>
 
-#define TIMER_FREQ 100UL // Требуемая частота таймера (Герц)
-#define TIMER_PRESCALER 1 // Установить значение делителя таймера в TCCR1B (Bits 2:0)
+#define TIMER_FREQ 100UL // ’ребуемаЯ частота таймера (ѓерц)
+#define TIMER_PRESCALER 1 // “становить значение делителЯ таймера в TCCR1B (Bits 2:0)
 
 #define MAX_TIMER  (F_CPU / TIMER_PRESCALER) / TIMER_FREQ // максимальное значение таймера в режиме CTC
 #if MAX_TIMER > UINT16_MAX
@@ -38,19 +38,19 @@ const uint16_t REBEEP_TIMER_MAX = 20 * TIMER_FREQ; // пауза между повторными сиг
 
 const uint8_t MAX_COUNT_VALUE = 99;
 
-const uint8_t KEY_TIME = 1;    // время задержки при нажатии на клавиши (n/TIMER_FREQ)*4 (сек.)
-const uint8_t SAVE_TIME = 100; // так как проверяется после 4 проходов по строкам
+const uint8_t KEY_TIME = 1;    // времЯ задержки при нажатии на клавиши (n/TIMER_FREQ)*4 (сек.)
+const uint8_t SAVE_TIME = 100; // так как проверЯетсЯ после 4 проходов по строкам
 
-//формула расчета коэффициента для требуемой частоты
+//формула расчета коэффициента длЯ требуемой частоты
 // OCRA = F_CPU / (2 * N * FREQ) - 1
-// F_CPU - частота процессора, N - делитель счетчика, FREQ - заданная застота звука
-const uint8_t KEY_FREQ = 200; // частоты пищалки для разных типов событий
-//если используется пьезоизлучатель, то для максимальной громкости небходимо
-//установить резонансную частоту излучателя
+// F_CPU - частота процессора, N - делитель счетчика, FREQ - заданнаЯ застота звука
+const uint8_t KEY_FREQ = 200; // частоты пищалки длЯ разных типов событий
+//если используетсЯ пьезоизлучатель, то длЯ максимальной громкости небходимо
+//установить резонансную частоту излучателЯ
 const uint8_t END_FREQ = 25;
 const uint8_t SAVE_FREQ = 150;
 
-const uint8_t SHOW_TIME = 1; // время свечения одного сегмента индикатора
+const uint8_t SHOW_TIME = 1; // времЯ свечениЯ одного сегмента индикатора
 
 enum KEYS {HASH_KEY = -1, STAR_KEY = -2};
 enum NO_ACTION {NO_KEY_PRESSED = -4, NOT_USED = 5, STOP = -1};
@@ -61,11 +61,11 @@ enum KEY_ACTIONS {ACTION_NONE, ACTION_PRESSED, ACTION_SAVE};
 
 typedef struct beep_struct
 {
-  int8_t enable; // состояние вывода звука (включен или выключен)
-  uint8_t position; // позиция в массиве звука
+  int8_t enable; // состоЯние вывода звука (включен или выключен)
+  uint8_t position; // позициЯ в массиве звука
   const int8_t *sound; //выбраный массив звука
   uint8_t play; // счетчик длительности звука
-  uint8_t repeat; // флаг повторного включения звука
+  uint8_t repeat; // флаг повторного включениЯ звука
   uint16_t pause; // пауза между повторами
 } CurrentBeep;
 
@@ -79,7 +79,7 @@ typedef struct key_struct
 {
   int8_t pressed; // номер нажатой кнопки
   int8_t used;    // кнопка была использована
-  int8_t action; // действие для нажатой кнопки
+  int8_t action; // действие длЯ нажатой кнопки
 } Key;
 
 typedef struct counter_struct
@@ -87,26 +87,26 @@ typedef struct counter_struct
   uint8_t current; // значение счетчика
   uint8_t last; // предыдущее значение
   uint8_t index; // номер выбранного счетчика
-  uint8_t finished; // флаг окончания счета
-  uint16_t fraction; // отсчитывает доли для current
+  uint8_t finished; // флаг окончаниЯ счета
+  uint16_t fraction; // отсчитывает доли длЯ current
 } Counter;
 
 
-//Звуки для разных событий.
-//Формат:
-//Положительные числа задают длительность звучения, отрицательные - длительность паузы,
-//Специальное значение STOP означает конец звучания.
-//Время звучания определяется как n/TIMER_FREQ.
-//Т.е если TIMER_FREQ=100, то при n=100 будет пищать 1 секунду
+//‡вуки длЯ разных событий.
+//”ормат:
+//Џоложительные числа задают длительность звучениЯ, отрицательные - длительность паузы,
+//‘пециальное значение STOP означает конец звучаниЯ.
+//‚ремЯ звучаниЯ определЯетсЯ как n/TIMER_FREQ.
+//’.е если TIMER_FREQ=100, то при n=100 будет пищать 1 секунду
 //максимальное значение числа: от -127 до +127.
-//Если необходима большая длительность можно поставить несколько значений звучания подряд.
+//…сли необходима большаЯ длительность можно поставить несколько значений звучаниЯ подрЯд.
 const int8_t key_beep[] = {2, STOP};
 const int8_t end_beep[] = {20, -3,  20, -3, 20, STOP};
 const int8_t save_beep[] = {10, -10,  10, STOP};
 
-//значения таймера по умолчанию
+//значениЯ таймера по умолчанию
 const uint8_t timer_preset_default[10] PROGMEM = {99, 10, 20, 30, 40, 50, 60, 70, 80, 90};
-//значения таймера в EEPROM по умолчанию. Загружаются в контроллер отдельной командой
+//значениЯ таймера в EEPROM по умолчанию. ‡агружаютсЯ в контроллер отдельной командой
 uint8_t EEMEM timer_preset[10] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 const int8_t keyboard_decoder[4][3] PROGMEM = {{ 1, 2, 3}, { 4, 5, 6}, {7, 8, 9}, {STAR_KEY, 0, HASH_KEY}};
@@ -184,7 +184,7 @@ inline void check_beep(void)
 
 inline static void scan_keyboard(void)
 {
-  static const uint8_t START_ROW = 1; // номера битов порта для сканирования строк клавиатуры
+  static const uint8_t START_ROW = 1; // номера битов порта длЯ сканированиЯ строк клавиатуры
   static const uint8_t END_ROW = 4;
 
   static int8_t current_key = NO_KEY_PRESSED ;
@@ -331,7 +331,7 @@ int main(void)
 {
   //все ножки на вход
   DDRA = 0x00;
-  //вклчаем подтягивающие резисторы
+  //вклчаем подтЯгивающие резисторы
   PORTA = 0xFF;
 
   // все ножки на выход
@@ -365,7 +365,7 @@ int main(void)
   OCR1BH = 0x00;
   OCR1BL = 0x00;
 
-  // прерывания от таймеров
+  // прерываниЯ от таймеров
   TIMSK = _BV(OCIE1A) | _BV(OCIE1B);
 
   // выключаем Universal Serial Interface
@@ -381,7 +381,7 @@ int main(void)
   key.action = ACTION_NONE;
   key.used = NOT_USED;
 
-  // сразу после включения таймер будет периодически пищать
+  // сразу после включениЯ таймер будет периодически пищать
   // чтобы напомнить, что он включен
   counter.current = 0;
   counter.finished = YES;
