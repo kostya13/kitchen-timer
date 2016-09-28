@@ -7,7 +7,6 @@
 // MCU - тип микроконтроллера
 // определены в Makefile
 
-#include <avr/cpufunc.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
